@@ -6,7 +6,7 @@ from fastapi import (
 
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
+from app.database import get_db
 
 from app.models.movimiento_caja import (
     MovimientoCaja
@@ -16,22 +16,13 @@ from app.schemas.movimiento_caja_schema import (
     MovimientoCajaCreate,
     MovimientoCajaResponse
 )
+from app.auth.dependencies import get_current_user
 
 router = APIRouter(
     prefix="/movimientos-caja",
-    tags=["Movimientos Caja"]
+    tags=["Movimientos Caja"],
+    dependencies=[Depends(get_current_user)]
 )
-
-# db
-def get_db():
-
-    db = SessionLocal()
-
-    try:
-        yield db
-
-    finally:
-        db.close()
 
 # crear movimiento
 @router.post("/",

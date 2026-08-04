@@ -78,7 +78,7 @@ async function submit() {
     await auth.login(form)
     router.push(route.query.redirect || { name: 'dashboard' })
   } catch (err) {
-    error.value = err.response?.data?.detail || 'Credenciales invalidas o API no disponible.'
+    error.value = err.message || 'Credenciales invalidas o API no disponible.'
   }
 }
 </script>

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
+from app.database import get_db
 from app.models.pago import Pago
 from app.models.orden import Orden
 
@@ -9,21 +9,13 @@ from app.schemas.pago_schema import (
     PagoCreate,
     PagoResponse
 )
+from app.auth.dependencies import get_current_user
 
 router = APIRouter(
     prefix="/pagos",
-    tags=["Pagos"]
+    tags=["Pagos"],
+    dependencies=[Depends(get_current_user)]
 )
-
-# conexión db
-def get_db():
-    db = SessionLocal()
-
-    try:
-        yield db
-
-    finally:
-        db.close()
 
 # crear pago
 @router.post("/", response_model=PagoResponse)

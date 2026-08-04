@@ -1,27 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
+from app.database import get_db
 from app.models.cliente import Cliente
 from app.schemas.cliente_schema import (
     ClienteCreate,
     ClienteResponse
 )
+from app.auth.dependencies import get_current_user
 
 router = APIRouter(
     prefix="/clientes",
-    tags=["Clientes"]
+    tags=["Clientes"],
+    dependencies=[Depends(get_current_user)]
 )
-
-# conexión DB
-def get_db():
-    db = SessionLocal()
-
-    try:
-        yield db
-
-    finally:
-        db.close()
 
 # crear cliente
 @router.post("/", response_model=ClienteResponse)

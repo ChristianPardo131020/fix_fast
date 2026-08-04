@@ -1,54 +1,74 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { loginRequest } from '../api/auth'
-
-const TOKEN_KEY = 'fixfast_token'
+import { supabase } from '../lib/supabaseClient'
+import { meRequest } from '../api/auth'
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref(localStorage.getItem(TOKEN_KEY))
+  const session = ref(null)
   const loading = ref(false)
-  const user = ref({ name: 'Administrador', role: 'Operaciones' })
+  const user = ref(null)
 
-  const isAuthenticated = computed(() => Boolean(token.value))
+  const isAuthenticated = computed(() => Boolean(session.value))
+  const token = computed(() => session.value?.access_token ?? null)
+
+  // Hidrata la sesión ya persistida por supabase-js (localStorage) y se
+  // suscribe a cambios (login, logout, refresh de token). Se llama antes
+  // de montar la app para que el guard de router no redirija mal en un
+  // hard-refresh de una ruta protegida.
+  async function init() {
+    const { data } = await supabase.auth.getSession()
+    session.value = data.session
+
+    supabase.auth.onAuthStateChange((_event, newSession) => {
+      session.value = newSession
+    })
+
+    if (session.value) {
+      await fetchProfile()
+    }
+  }
+
+  async function fetchProfile() {
+    try {
+      const response = await meRequest()
+      user.value = {
+        name: response.data.nombre,
+        role: response.data.rol,
+        email: response.data.email,
+      }
+    } catch {
+      user.value = null
+    }
+  }
 
   async function login(credentials) {
     loading.value = true
 
     try {
-      const payload = new URLSearchParams()
-      payload.append('username', credentials.email)
-      payload.append('password', credentials.password)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      })
 
-      let response
+      if (error) throw error
 
-      try {
-        response = await loginRequest(payload, {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        })
-      } catch (formError) {
-        response = await loginRequest({
-          username: credentials.email,
-          email: credentials.email,
-          password: credentials.password,
-        })
-      }
-
-      token.value = response.data.access_token
-      localStorage.setItem(TOKEN_KEY, token.value)
-      return response.data
+      session.value = data.session
+      await fetchProfile()
+      return data
     } finally {
       loading.value = false
     }
   }
 
   function logout(redirect = true) {
-    token.value = null
-    localStorage.removeItem(TOKEN_KEY)
+    supabase.auth.signOut()
+    session.value = null
+    user.value = null
 
     if (redirect) {
       window.location.assign('/login')
     }
   }
 
-  return { token, user, loading, isAuthenticated, login, logout }
+  return { session, token, user, loading, isAuthenticated, login, logout, init }
 })

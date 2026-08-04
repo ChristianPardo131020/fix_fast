@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     text
 )
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.database import Base
 
@@ -45,7 +46,7 @@ class Orden(Base):
     fecha_entrega = Column(TIMESTAMP)
 
     tecnico_id = Column(
-        Integer,
+        UUID(as_uuid=True),
         ForeignKey("usuarios.id")
     )
 

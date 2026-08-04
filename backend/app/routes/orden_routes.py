@@ -1,27 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
+from app.database import get_db
 from app.models.orden import Orden
 from app.schemas.orden_schema import (
     OrdenCreate,
     OrdenResponse
 )
+from app.auth.dependencies import get_current_user
 
 router = APIRouter(
     prefix="/ordenes",
-    tags=["Ordenes"]
+    tags=["Ordenes"],
+    dependencies=[Depends(get_current_user)]
 )
-
-# conexión db
-def get_db():
-    db = SessionLocal()
-
-    try:
-        yield db
-
-    finally:
-        db.close()
 
 # crear orden
 @router.post("/", response_model=OrdenResponse)

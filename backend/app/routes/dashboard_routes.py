@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.database import SessionLocal
+from app.database import get_db
 
 from app.models.cliente import Cliente
 from app.models.orden import Orden
@@ -11,21 +11,13 @@ from app.models.pago import Pago
 from app.schemas.dashboard_schema import (
     DashboardResponse
 )
+from app.auth.dependencies import get_current_user
 
 router = APIRouter(
     prefix="/dashboard",
-    tags=["Dashboard"]
+    tags=["Dashboard"],
+    dependencies=[Depends(get_current_user)]
 )
-
-# conexión db
-def get_db():
-    db = SessionLocal()
-
-    try:
-        yield db
-
-    finally:
-        db.close()
 
 @router.get("/",
             response_model=DashboardResponse)

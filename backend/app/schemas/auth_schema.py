@@ -1,9 +1,13 @@
+from uuid import UUID
+
 from pydantic import BaseModel
 
-class LoginRequest(BaseModel):
+class UsuarioMeResponse(BaseModel):
+    id: UUID
+    nombre: str
     email: str
-    password: str
+    rol: str
+    activo: bool
 
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str
+    class Config:
+        from_attributes = True

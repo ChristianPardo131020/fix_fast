@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     text
 )
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.database import Base
 
@@ -30,7 +31,7 @@ class MovimientoCaja(Base):
     descripcion = Column(Text)
 
     usuario_id = Column(
-        Integer,
+        UUID(as_uuid=True),
         ForeignKey("usuarios.id")
     )
 

@@ -7,6 +7,7 @@ from sqlalchemy import (
     ForeignKey,
     text
 )
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.database import Base
 
@@ -25,7 +26,7 @@ class HistorialEstado(Base):
     estado_nuevo = Column(String(50))
 
     usuario_id = Column(
-        Integer,
+        UUID(as_uuid=True),
         ForeignKey("usuarios.id")
     )
 
