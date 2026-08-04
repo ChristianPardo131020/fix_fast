@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 
 export const useUiStore = defineStore('ui', () => {
   const sidebarOpen = ref(false)
+  const sidebarCollapsed = ref(localStorage.getItem('fixfast_sidebar_collapsed') === '1')
   const darkMode = ref(localStorage.getItem('fixfast_theme') === 'dark')
   const toasts = ref([])
 
@@ -12,6 +13,11 @@ export const useUiStore = defineStore('ui', () => {
 
   function closeSidebar() {
     sidebarOpen.value = false
+  }
+
+  function toggleSidebarCollapsed() {
+    sidebarCollapsed.value = !sidebarCollapsed.value
+    localStorage.setItem('fixfast_sidebar_collapsed', sidebarCollapsed.value ? '1' : '0')
   }
 
   function toggleTheme() {
@@ -36,10 +42,12 @@ export const useUiStore = defineStore('ui', () => {
 
   return {
     sidebarOpen,
+    sidebarCollapsed,
     darkMode,
     toasts,
     toggleSidebar,
     closeSidebar,
+    toggleSidebarCollapsed,
     toggleTheme,
     hydrateTheme,
     toast,

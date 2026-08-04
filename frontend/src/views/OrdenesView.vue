@@ -112,7 +112,7 @@ const statusFilter = ref('')
 const modalOpen = ref(false)
 const saving = ref(false)
 const editingId = ref(null)
-const estados = ['Pendiente', 'En proceso', 'Reparado', 'Entregado', 'Cancelado']
+const estados = ['Pendiente', 'En reparacion', 'Esperando repuesto', 'Listo', 'Entregado', 'Cancelado']
 
 const showNewCliente = ref(false)
 const savingCliente = ref(false)
