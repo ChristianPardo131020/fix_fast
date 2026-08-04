@@ -55,8 +55,8 @@
           <div class="hidden items-center gap-3 rounded-lg border border-slate-200 px-3 py-1.5 md:flex dark:border-slate-800">
             <div class="h-7 w-7 rounded-full bg-teal-600 text-center text-xs font-bold leading-7 text-white">A</div>
             <div>
-              <p class="text-sm font-medium leading-4">{{ auth.user.name }}</p>
-              <p class="text-xs text-slate-500 dark:text-slate-400">{{ auth.user.role }}</p>
+              <p class="text-sm font-medium leading-4">{{ auth.user?.name || 'Usuario' }}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">{{ auth.user?.role || '—' }}</p>
             </div>
           </div>
           <button class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900" type="button" title="Cerrar sesion" @click="auth.logout()">
