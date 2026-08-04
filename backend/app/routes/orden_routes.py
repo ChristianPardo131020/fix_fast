@@ -30,6 +30,14 @@ def crear_orden(
 
     db.refresh(nueva_orden)
 
+    # Codigo de seguimiento amigable para que el cliente lo consulte en
+    # /publico/seguimiento sin tener que usar el id crudo de la base de
+    # datos. Se genera despues del insert porque depende del id asignado.
+    if not nueva_orden.numero_orden:
+        nueva_orden.numero_orden = f"FF-{nueva_orden.id:06d}"
+        db.commit()
+        db.refresh(nueva_orden)
+
     return nueva_orden
 
 # listar órdenes

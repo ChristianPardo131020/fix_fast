@@ -25,3 +25,8 @@ export const pagosApi = {
   get: (id) => http.get(`/pagos/${id}/`),
   remove: (id) => http.delete(`/pagos/${id}/`),
 }
+
+// Sin auth: lo consulta el cliente final desde /seguimiento.
+export const publicApi = {
+  trackOrder: (codigo, telefono) => http.get('/publico/seguimiento', { params: { codigo, telefono } }),
+}

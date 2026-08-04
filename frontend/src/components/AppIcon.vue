@@ -15,6 +15,7 @@ import {
   Clock,
   CreditCard,
   Eye,
+  EyeOff,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -69,6 +70,7 @@ const icons = {
   check: CircleCheck,
   clock: Clock,
   eye: Eye,
+  'eye-off': EyeOff,
   calendar: CalendarDays,
   refresh: RefreshCw,
 }
