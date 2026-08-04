@@ -6,6 +6,7 @@
 import { computed } from 'vue'
 import {
   Banknote,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   CircleCheck,
@@ -13,6 +14,7 @@ import {
   ClipboardList,
   Clock,
   CreditCard,
+  Eye,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -20,6 +22,7 @@ import {
   PackageSearch,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   Settings,
   Shield,
@@ -65,6 +68,9 @@ const icons = {
   dot: CircleDot,
   check: CircleCheck,
   clock: Clock,
+  eye: Eye,
+  calendar: CalendarDays,
+  refresh: RefreshCw,
 }
 
 const icon = computed(() => icons[props.name] || Clock)

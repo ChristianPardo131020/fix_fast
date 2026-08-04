@@ -9,7 +9,7 @@
     </div>
 
     <BaseCard content-class="p-4">
-      <div class="mb-4 grid gap-3 md:grid-cols-[1fr_220px]">
+      <div class="grid gap-3 md:grid-cols-[1fr_220px]">
         <label class="relative block">
           <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
           <input v-model="search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por cliente, equipo, falla o estado" />
@@ -19,30 +19,26 @@
           <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
         </BaseInput>
       </div>
-
-      <BaseTable :columns="columns" :rows="filteredOrdenes" :loading="loading">
-        <template #cliente="{ row }">{{ clienteNombre(row) }}</template>
-        <template #equipo="{ row }">
-          <div>
-            <p class="font-semibold text-slate-950 dark:text-white">{{ row.equipo || row.dispositivo || row.modelo || 'Equipo' }}</p>
-            <p class="text-xs text-slate-500">{{ row.marca || row.modelo || row.imei || 'Sin detalle' }}</p>
-          </div>
-        </template>
-        <template #estado="{ row }"><StatusBadge :value="row.estado" /></template>
-        <template #valor="{ row }">{{ formatCurrency(row.valor || row.costo_total || row.total) }}</template>
-        <template #saldo="{ row }">{{ formatCurrency(row.saldo || row.saldo_pendiente || 0) }}</template>
-        <template #empty>
-          <EmptyState icon="orders" title="No hay ordenes" description="Registra una orden para iniciar el seguimiento tecnico." />
-        </template>
-        <template #actions="{ row }">
-          <div class="flex justify-end gap-1">
-            <BaseButton variant="ghost" size="sm" icon="edit" @click="openEdit(row)">Editar</BaseButton>
-            <BaseButton variant="ghost" size="sm" icon="trash" @click="removeOrden(row)">Eliminar</BaseButton>
-          </div>
-        </template>
-      </BaseTable>
     </BaseCard>
 
+    <div v-if="filteredOrdenes.length" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <OrderCard
+        v-for="orden in filteredOrdenes"
+        :key="orden.id"
+        :orden="orden"
+        :cliente-nombre="clienteNombre(orden)"
+        :estados="estados"
+        @edit="openEdit"
+        @pagar="openPago"
+        @detalles="openDetalles"
+        @cambiar-estado="cambiarEstado"
+      />
+    </div>
+    <BaseCard v-else content-class="p-4">
+      <EmptyState icon="orders" title="No hay ordenes" description="Registra una orden para iniciar el seguimiento tecnico." />
+    </BaseCard>
+
+    <!-- Crear / editar orden -->
     <BaseModal v-model="modalOpen" :title="editingId ? 'Editar orden' : 'Nueva orden'" subtitle="Informacion tecnica y financiera del equipo.">
       <form class="grid gap-4" @submit.prevent="saveOrden">
         <div>
@@ -71,7 +67,7 @@
           <BaseInput v-model="form.marca" label="Marca" />
           <BaseInput v-model="form.modelo" label="Modelo" />
         </div>
-        <BaseInput v-model="form.falla" label="Falla reportada" textarea required />
+        <BaseInput v-model="form.problema" label="Falla reportada" textarea required />
         <div class="grid gap-4 sm:grid-cols-3">
           <BaseInput v-model="form.estado" label="Estado" type="select">
             <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
@@ -79,12 +75,72 @@
           <BaseInput v-model="form.valor" label="Valor total" type="number" />
           <BaseInput v-model="form.saldo" label="Saldo pendiente" type="number" />
         </div>
-        <BaseInput v-model="form.observaciones" label="Observaciones internas" textarea />
         <div class="flex justify-end gap-2">
           <BaseButton variant="secondary" @click="modalOpen = false">Cancelar</BaseButton>
           <BaseButton type="submit" :loading="saving">{{ editingId ? 'Actualizar' : 'Crear orden' }}</BaseButton>
         </div>
       </form>
+    </BaseModal>
+
+    <!-- Registrar pago -->
+    <BaseModal v-model="pagoModalOpen" title="Registrar pago" :subtitle="pagoTarget ? `Orden #${pagoTarget.id} · ${clienteNombre(pagoTarget)}` : ''">
+      <form class="grid gap-4" @submit.prevent="savePago">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <BaseInput v-model="pagoForm.valor" label="Valor" type="number" required />
+          <BaseInput v-model="pagoForm.metodo_pago" label="Metodo de pago" type="select">
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia</option>
+            <option value="Nequi">Nequi</option>
+            <option value="Daviplata">Daviplata</option>
+            <option value="Tarjeta">Tarjeta</option>
+          </BaseInput>
+        </div>
+        <BaseInput v-model="pagoForm.referencia_pago" label="Referencia" placeholder="Numero de comprobante o nota" />
+        <BaseInput v-model="pagoForm.observaciones" label="Observaciones" textarea />
+        <div class="flex justify-end gap-2">
+          <BaseButton variant="secondary" @click="pagoModalOpen = false">Cancelar</BaseButton>
+          <BaseButton type="submit" :loading="savingPago">Guardar pago</BaseButton>
+        </div>
+      </form>
+    </BaseModal>
+
+    <!-- Ver detalles (solo lectura) -->
+    <BaseModal v-model="detallesModalOpen" :title="detalleOrden ? `Orden #${detalleOrden.id}` : ''" subtitle="Resumen de la orden.">
+      <div v-if="detalleOrden" class="space-y-4 text-sm">
+        <div class="flex items-center justify-between">
+          <StatusBadge :value="detalleOrden.estado" />
+          <span class="text-xs text-slate-500">Ingreso: {{ formatDate(detalleOrden.fecha_ingreso) }}</span>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <p class="text-xs text-slate-400">Cliente</p>
+            <p class="font-medium text-slate-950 dark:text-white">{{ clienteNombre(detalleOrden) }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Equipo</p>
+            <p class="font-medium text-slate-950 dark:text-white">{{ detalleOrden.equipo || 'Sin equipo' }} · {{ detalleOrden.marca || '-' }} {{ detalleOrden.modelo || '' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Valor total</p>
+            <p class="font-medium text-slate-950 dark:text-white">{{ formatCurrency(detalleOrden.valor) }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Saldo pendiente</p>
+            <p class="font-medium text-slate-950 dark:text-white">{{ formatCurrency(detalleOrden.saldo) }}</p>
+          </div>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400">Falla reportada</p>
+          <p class="mt-1 rounded-lg bg-slate-50 p-3 text-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ detalleOrden.problema || 'Sin descripcion' }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400">Diagnostico tecnico</p>
+          <p class="mt-1 rounded-lg bg-slate-50 p-3 text-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ detalleOrden.diagnostico || 'Sin diagnostico aun' }}</p>
+        </div>
+        <div class="flex justify-end">
+          <BaseButton variant="secondary" @click="detallesModalOpen = false">Cerrar</BaseButton>
+        </div>
+      </div>
     </BaseModal>
   </div>
 </template>
@@ -96,14 +152,14 @@ import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
 import BaseInput from '../components/BaseInput.vue'
 import BaseModal from '../components/BaseModal.vue'
-import BaseTable from '../components/BaseTable.vue'
 import EmptyState from '../components/EmptyState.vue'
+import OrderCard from '../components/OrderCard.vue'
 import StatusBadge from '../components/StatusBadge.vue'
-import { clientesApi, ordenesApi } from '../api/resources'
+import { clientesApi, ordenesApi, pagosApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 
-const { formatCurrency } = useFormatters()
+const { formatCurrency, formatDate } = useFormatters()
 const { loading, run } = useApiState()
 const ordenes = ref([])
 const clientes = ref([])
@@ -118,14 +174,15 @@ const showNewCliente = ref(false)
 const savingCliente = ref(false)
 const newCliente = reactive({ nombre: '', telefono: '' })
 
-const form = reactive({ cliente_id: '', equipo: '', marca: '', modelo: '', falla: '', estado: 'Pendiente', valor: 0, saldo: 0, observaciones: '' })
-const columns = [
-  { key: 'cliente', label: 'Cliente' },
-  { key: 'equipo', label: 'Equipo' },
-  { key: 'estado', label: 'Estado' },
-  { key: 'valor', label: 'Valor' },
-  { key: 'saldo', label: 'Saldo' },
-]
+const form = reactive({ cliente_id: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0 })
+
+const pagoModalOpen = ref(false)
+const savingPago = ref(false)
+const pagoTarget = ref(null)
+const pagoForm = reactive({ valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
+
+const detallesModalOpen = ref(false)
+const detalleOrden = ref(null)
 
 const filteredOrdenes = computed(() => {
   const term = search.value.toLowerCase().trim()
@@ -143,7 +200,7 @@ function clienteNombre(orden) {
 }
 
 function resetForm() {
-  Object.assign(form, { cliente_id: '', equipo: '', marca: '', modelo: '', falla: '', estado: 'Pendiente', valor: 0, saldo: 0, observaciones: '' })
+  Object.assign(form, { cliente_id: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0 })
   editingId.value = null
   showNewCliente.value = false
   Object.assign(newCliente, { nombre: '', telefono: '' })
@@ -181,16 +238,26 @@ function openEdit(orden) {
   editingId.value = orden.id
   Object.assign(form, {
     cliente_id: orden.cliente_id || orden.cliente?.id || '',
-    equipo: orden.equipo || orden.dispositivo || '',
+    equipo: orden.equipo || '',
     marca: orden.marca || '',
     modelo: orden.modelo || '',
-    falla: orden.falla || orden.descripcion || '',
+    problema: orden.problema || '',
     estado: orden.estado || 'Pendiente',
-    valor: orden.valor || orden.costo_total || orden.total || 0,
-    saldo: orden.saldo || orden.saldo_pendiente || 0,
-    observaciones: orden.observaciones || '',
+    valor: orden.valor || 0,
+    saldo: orden.saldo || 0,
   })
   modalOpen.value = true
+}
+
+function openPago(orden) {
+  pagoTarget.value = orden
+  Object.assign(pagoForm, { valor: orden.saldo || 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
+  pagoModalOpen.value = true
+}
+
+function openDetalles(orden) {
+  detalleOrden.value = orden
+  detallesModalOpen.value = true
 }
 
 async function loadData() {
@@ -216,9 +283,36 @@ async function saveOrden() {
   }
 }
 
-async function removeOrden(orden) {
-  if (!confirm(`Eliminar la orden #${orden.id}?`)) return
-  await run(() => ordenesApi.remove(orden.id), 'Orden eliminada')
+async function savePago() {
+  if (!pagoTarget.value) return
+  savingPago.value = true
+
+  try {
+    await run(() => pagosApi.create({ ...pagoForm, orden_id: pagoTarget.value.id, valor: Number(pagoForm.valor || 0) }), 'Pago registrado')
+    pagoModalOpen.value = false
+    await loadData()
+  } finally {
+    savingPago.value = false
+  }
+}
+
+async function cambiarEstado({ orden, estado }) {
+  await run(
+    () => ordenesApi.update(orden.id, {
+      cliente_id: orden.cliente_id,
+      numero_orden: orden.numero_orden,
+      equipo: orden.equipo,
+      marca: orden.marca,
+      modelo: orden.modelo,
+      problema: orden.problema,
+      diagnostico: orden.diagnostico,
+      estado,
+      valor: orden.valor,
+      saldo: orden.saldo,
+      tecnico_id: orden.tecnico_id,
+    }),
+    'Estado actualizado',
+  )
   await loadData()
 }
 
