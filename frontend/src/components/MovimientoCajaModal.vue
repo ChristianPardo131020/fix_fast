@@ -1,5 +1,5 @@
 <template>
-  <BaseModal v-model="isOpen" title="Nuevo egreso" subtitle="Registra gastos operativos, compras, arriendos, servicios o pagos internos.">
+  <BaseModal v-model="isOpen" :title="copy.title" :subtitle="copy.subtitle">
     <form class="grid gap-4" @submit.prevent="submit">
       <div class="grid gap-4 sm:grid-cols-2">
         <BaseInput v-model="form.categoria" label="Categoria" type="select" required>
@@ -19,7 +19,7 @@
         </BaseInput>
       </div>
 
-      <BaseInput v-model="form.descripcion" label="Descripcion" placeholder="Ej. Pago arriendo mayo" textarea required />
+      <BaseInput v-model="form.descripcion" :label="copy.descripcionLabel" :placeholder="copy.descripcionPlaceholder" textarea required />
 
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
         <div class="flex items-center justify-between gap-4">
@@ -27,7 +27,7 @@
             <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Vista previa</p>
             <p class="mt-1 text-lg font-semibold text-slate-950 dark:text-white">{{ formattedValue }}</p>
           </div>
-          <FinanceTypeBadge value="egreso" />
+          <FinanceTypeBadge :value="tipo" />
         </div>
       </div>
 
@@ -50,12 +50,36 @@ import { useFormatters } from '../composables/useFormatters'
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   loading: { type: Boolean, default: false },
+  tipo: { type: String, default: 'egreso' }, // 'egreso' | 'ingreso'
 })
 
 const emit = defineEmits(['update:modelValue', 'save'])
 const { formatCurrency } = useFormatters()
 
-const categorias = ['arriendo', 'empleado', 'servicios', 'herramientas', 'transporte', 'compra', 'prestamo', 'otros']
+const categoriasPorTipo = {
+  egreso: ['arriendo', 'empleado', 'servicios', 'herramientas', 'transporte', 'compra', 'prestamo', 'otros'],
+  // Ingresos que no vienen de una orden facturada: ventas de mostrador,
+  // pilas, accesorios, servicios rapidos sin ficha de cliente.
+  ingreso: ['venta', 'accesorio', 'pila', 'servicio_rapido', 'otros'],
+}
+
+const copyPorTipo = {
+  egreso: {
+    title: 'Nuevo egreso',
+    subtitle: 'Registra gastos operativos, compras, arriendos, servicios o pagos internos.',
+    descripcionLabel: 'Descripcion',
+    descripcionPlaceholder: 'Ej. Pago arriendo mayo',
+  },
+  ingreso: {
+    title: 'Nuevo ingreso',
+    subtitle: 'Ventas u otros ingresos que no requieren factura ni datos del cliente.',
+    descripcionLabel: 'Descripcion',
+    descripcionPlaceholder: 'Ej. Venta de pila para iPhone 11',
+  },
+}
+
+const categorias = computed(() => categoriasPorTipo[props.tipo] || categoriasPorTipo.egreso)
+const copy = computed(() => copyPorTipo[props.tipo] || copyPorTipo.egreso)
 
 const form = reactive({
   categoria: 'otros',
@@ -87,7 +111,7 @@ watch(
 
 function submit() {
   emit('save', {
-    tipo: 'egreso',
+    tipo: props.tipo,
     categoria: form.categoria,
     valor: Number(form.valor || 0),
     metodo_pago: form.metodo_pago,

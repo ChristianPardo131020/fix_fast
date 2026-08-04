@@ -3,32 +3,32 @@
     <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
       <div>
         <div class="flex flex-wrap items-center gap-2">
-          <span class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">Egresos</span>
-          <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">Caja operativa</span>
+          <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">Ingresos</span>
+          <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">Sin factura</span>
         </div>
-        <h2 class="mt-3 text-2xl font-semibold text-slate-950 dark:text-white">Egresos</h2>
+        <h2 class="mt-3 text-2xl font-semibold text-slate-950 dark:text-white">Otros ingresos</h2>
         <p class="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-          Controla arriendos, empleados, servicios, compras, herramientas, transportes y otros gastos del taller. Las ventas
-          y otros ingresos sin factura se registran desde <RouterLink :to="{ name: 'ingresos' }" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Otros ingresos</RouterLink>.
+          Ventas de mostrador y otros ingresos que no requieren factura ni datos del cliente: pilas, accesorios, servicios rapidos.
+          Los pagos de ordenes con factura se registran desde <RouterLink :to="{ name: 'pagos' }" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Pagos</RouterLink>.
         </p>
       </div>
 
-      <div class="flex flex-wrap gap-2">
-        <BaseButton variant="secondary" disabled>Exportar Excel</BaseButton>
-        <BaseButton variant="secondary" disabled>Reporte PDF</BaseButton>
-        <BaseButton icon="plus" @click="modalOpen = true">Nuevo egreso</BaseButton>
+      <div class="hidden flex-wrap gap-2 sm:flex">
+        <BaseButton icon="plus" @click="modalOpen = true">Nuevo ingreso</BaseButton>
       </div>
     </div>
 
+    <FabButton label="Nuevo ingreso" @click="modalOpen = true" />
+
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <StatCard label="Total egresos" :value="formatCurrency(summary.egresos)" icon="cash" tone="rose" hint="Gastos y salidas filtradas" />
-      <StatCard label="Egreso promedio" :value="formatCurrency(summary.promedio)" icon="dashboard" tone="slate" hint="Promedio por movimiento" />
-      <StatCard label="Mayor egreso" :value="formatCurrency(summary.mayor)" icon="cash" tone="amber" hint="Salida mas alta filtrada" />
-      <StatCard label="Movimientos" :value="formatNumber(filteredMovimientos.length)" icon="orders" tone="sky" hint="Registros de gasto" />
+      <StatCard label="Total ingresos" :value="formatCurrency(summary.total)" icon="trend-up" tone="green" hint="Ingresos sin factura filtrados" />
+      <StatCard label="Ingreso promedio" :value="formatCurrency(summary.promedio)" icon="dashboard" tone="slate" hint="Promedio por movimiento" />
+      <StatCard label="Mayor ingreso" :value="formatCurrency(summary.mayor)" icon="cash" tone="brand" hint="Venta mas alta filtrada" />
+      <StatCard label="Movimientos" :value="formatNumber(filteredMovimientos.length)" icon="orders" tone="sky" hint="Registros de ingreso" />
     </div>
 
     <div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <BaseCard title="Egresos por metodo" subtitle="Distribucion de salidas segun la forma de pago">
+      <BaseCard title="Ingresos por metodo" subtitle="Distribucion de entradas segun la forma de pago">
         <div class="space-y-5">
           <div v-for="item in methodBars" :key="item.label">
             <div class="mb-2 flex items-center justify-between text-sm">
@@ -40,32 +40,26 @@
             </div>
           </div>
         </div>
-        <EmptyState v-if="!methodBars.length" icon="cash" title="Sin egresos" description="Registra gastos para visualizar la caja por metodo de pago." />
-        <div class="mt-6 grid gap-3 sm:grid-cols-3">
-          <div v-for="metric in miniMetrics" :key="metric.label" class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ metric.label }}</p>
-            <p class="mt-2 text-lg font-semibold text-slate-950 dark:text-white">{{ metric.value }}</p>
-          </div>
-        </div>
+        <EmptyState v-if="!methodBars.length" icon="cash" title="Sin ingresos" description="Registra ventas para visualizar los ingresos por metodo de pago." />
       </BaseCard>
 
-      <BaseCard title="Gastos por categoria" subtitle="Ranking de egresos para decisiones rapidas">
-        <div v-if="expenseCategories.length" class="space-y-4">
-          <div v-for="item in expenseCategories" :key="item.categoria">
+      <BaseCard title="Ingresos por categoria" subtitle="Que se esta vendiendo mas, de un vistazo">
+        <div v-if="categoryBars.length" class="space-y-4">
+          <div v-for="item in categoryBars" :key="item.categoria">
             <div class="mb-2 flex items-center justify-between gap-4 text-sm">
-              <span class="font-medium capitalize text-slate-700 dark:text-slate-200">{{ item.categoria }}</span>
+              <span class="font-medium capitalize text-slate-700 dark:text-slate-200">{{ item.categoria.replace('_', ' ') }}</span>
               <span class="text-slate-500 dark:text-slate-400">{{ formatCurrency(item.total) }}</span>
             </div>
             <div class="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-              <div class="h-full rounded-full bg-rose-500" :style="{ width: `${item.percent}%` }" />
+              <div class="h-full rounded-full bg-green-500" :style="{ width: `${item.percent}%` }" />
             </div>
           </div>
         </div>
-        <EmptyState v-else icon="cash" title="Sin egresos" description="Los gastos por categoria apareceran cuando registres egresos." />
+        <EmptyState v-else icon="cash" title="Sin ingresos" description="Los ingresos por categoria apareceran cuando registres ventas." />
       </BaseCard>
     </div>
 
-    <BaseCard title="Egresos de caja" subtitle="Gastos operativos y trazabilidad financiera" content-class="p-4">
+    <BaseCard title="Otros ingresos" subtitle="Ventas y entradas sin factura, con trazabilidad" content-class="p-4">
       <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_190px_170px]">
         <label class="relative block">
           <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
@@ -73,7 +67,7 @@
         </label>
         <BaseInput v-model="filters.categoria" type="select">
           <option value="">Todas las categorias</option>
-          <option v-for="categoria in categorias" :key="categoria" :value="categoria">{{ categoria }}</option>
+          <option v-for="categoria in categorias" :key="categoria" :value="categoria">{{ categoria.replace('_', ' ') }}</option>
         </BaseInput>
         <BaseInput v-model="filters.fecha" type="date" />
       </div>
@@ -81,7 +75,7 @@
       <FinanceMovementsTable :rows="filteredMovimientos" :loading="loading" @delete="removeMovimiento" />
     </BaseCard>
 
-    <MovimientoCajaModal v-model="modalOpen" :loading="saving" @save="saveMovimiento" />
+    <MovimientoCajaModal v-model="modalOpen" tipo="ingreso" :loading="saving" @save="saveMovimiento" />
   </div>
 </template>
 
@@ -92,6 +86,7 @@ import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
 import BaseInput from '../components/BaseInput.vue'
 import EmptyState from '../components/EmptyState.vue'
+import FabButton from '../components/FabButton.vue'
 import FinanceMovementsTable from '../components/FinanceMovementsTable.vue'
 import MovimientoCajaModal from '../components/MovimientoCajaModal.vue'
 import StatCard from '../components/StatCard.vue'
@@ -107,7 +102,7 @@ const ui = useUiStore()
 const movimientos = ref([])
 const modalOpen = ref(false)
 const saving = ref(false)
-const categorias = ['arriendo', 'empleado', 'servicios', 'herramientas', 'transporte', 'compra', 'prestamo', 'otros']
+const categorias = ['venta', 'accesorio', 'pila', 'servicio_rapido', 'otros']
 const filters = reactive({ search: '', categoria: '', fecha: '' })
 
 const filteredMovimientos = computed(() => {
@@ -115,7 +110,7 @@ const filteredMovimientos = computed(() => {
 
   return movimientos.value.filter((movimiento) => {
     const matchesSearch = !term || JSON.stringify(movimiento).toLowerCase().includes(term)
-    const matchesTipo = movimiento.tipo === 'egreso'
+    const matchesTipo = movimiento.tipo === 'ingreso'
     const matchesCategoria = !filters.categoria || movimiento.categoria === filters.categoria
     const matchesFecha = !filters.fecha || movimiento.created_at?.startsWith(filters.fecha)
 
@@ -125,11 +120,11 @@ const filteredMovimientos = computed(() => {
 
 const summary = computed(() => {
   const valores = filteredMovimientos.value.map((item) => Number(item.valor || 0))
-  const egresos = valores.reduce((sum, valor) => sum + valor, 0)
+  const total = valores.reduce((sum, valor) => sum + valor, 0)
 
   return {
-    egresos,
-    promedio: valores.length ? egresos / valores.length : 0,
+    total,
+    promedio: valores.length ? total / valores.length : 0,
     mayor: Math.max(...valores, 0),
   }
 })
@@ -148,14 +143,12 @@ const methodBars = computed(() => {
     .sort((a, b) => b.value - a.value)
 })
 
-const expenseCategories = computed(() => {
-  const totals = filteredMovimientos.value
-    .filter((item) => item.tipo === 'egreso')
-    .reduce((acc, item) => {
-      const categoria = item.categoria || 'otros'
-      acc[categoria] = (acc[categoria] || 0) + Number(item.valor || 0)
-      return acc
-    }, {})
+const categoryBars = computed(() => {
+  const totals = filteredMovimientos.value.reduce((acc, item) => {
+    const categoria = item.categoria || 'otros'
+    acc[categoria] = (acc[categoria] || 0) + Number(item.valor || 0)
+    return acc
+  }, {})
 
   const max = Math.max(...Object.values(totals), 1)
 
@@ -164,21 +157,9 @@ const expenseCategories = computed(() => {
     .sort((a, b) => b.total - a.total)
 })
 
-const miniMetrics = computed(() => [
-  { label: 'Movimientos', value: formatNumber(filteredMovimientos.value.length) },
-  { label: 'Categorias', value: formatNumber(new Set(filteredMovimientos.value.map((item) => item.categoria)).size) },
-  { label: 'Ticket promedio', value: formatCurrency(averageTicket.value) },
-])
-
-const averageTicket = computed(() => {
-  if (!filteredMovimientos.value.length) return 0
-  const total = filteredMovimientos.value.reduce((sum, item) => sum + Number(item.valor || 0), 0)
-  return total / filteredMovimientos.value.length
-})
-
 async function loadMovimientos() {
   const response = await run(() => movimientosCajaApi.list())
-  movimientos.value = response.data.filter((movimiento) => movimiento.tipo === 'egreso')
+  movimientos.value = response.data.filter((movimiento) => movimiento.tipo === 'ingreso')
 }
 
 async function saveMovimiento(payload) {
@@ -189,7 +170,7 @@ async function saveMovimiento(payload) {
   saving.value = true
 
   try {
-    await run(() => movimientosCajaApi.create({ ...payload, tipo: 'egreso' }), 'Egreso registrado')
+    await run(() => movimientosCajaApi.create(payload), 'Ingreso registrado')
     modalOpen.value = false
     await loadMovimientos()
   } finally {
@@ -199,11 +180,11 @@ async function saveMovimiento(payload) {
 
 async function removeMovimiento(movimiento) {
   const confirmed = await ui.confirm({
-    title: `Eliminar movimiento de ${formatCurrency(movimiento.valor)}`,
+    title: `Eliminar ingreso de ${formatCurrency(movimiento.valor)}`,
     message: 'Esta accion no se puede deshacer.',
   })
   if (!confirmed) return
-  await run(() => movimientosCajaApi.remove(movimiento.id), 'Movimiento eliminado')
+  await run(() => movimientosCajaApi.remove(movimiento.id), 'Ingreso eliminado')
   await loadMovimientos()
 }
 

@@ -20,6 +20,7 @@ const routes = [
       { path: 'ordenes', name: 'ordenes', component: () => import('../views/OrdenesView.vue') },
       { path: 'ordenes/:id', name: 'orden-detalle', component: () => import('../views/OrdenDetalleView.vue'), props: true },
       { path: 'pagos', name: 'pagos', component: () => import('../views/PagosView.vue') },
+      { path: 'ingresos', name: 'ingresos', component: () => import('../views/IngresosView.vue') },
       { path: 'caja', name: 'caja', component: () => import('../views/CajaView.vue') },
       { path: 'finanzas', redirect: { name: 'caja' } },
       { path: 'configuracion', name: 'configuracion', component: () => import('../views/ConfiguracionView.vue') },

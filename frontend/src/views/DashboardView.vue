@@ -20,7 +20,7 @@
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard label="Equipos en reparacion" :value="formatNumber(enReparacionCount)" icon="wrench" tone="brand" hint="Trabajos activos en el taller" />
       <StatCard label="Listos para entregar" :value="formatNumber(listosCount)" icon="check" tone="green" hint="Esperando que el cliente retire" />
-      <StatCard label="Ingresos del mes" :value="formatCurrency(ingresosMes)" icon="payments" tone="brand" hint="Pagos registrados este mes" />
+      <StatCard label="Ingresos del mes" :value="formatCurrency(ingresosMes)" icon="payments" tone="brand" hint="Pagos y otros ingresos de este mes" />
       <StatCard label="Saldo pendiente" :value="formatCurrency(metrics.saldo_pendiente)" icon="cash" tone="orange" hint="Cartera por cobrar" />
     </section>
 
@@ -94,7 +94,7 @@
               <p class="mt-1 text-xs text-slate-400">{{ event.time }}</p>
             </div>
           </div>
-          <EmptyState v-if="!timeline.length" icon="dashboard" title="Sin actividad" description="La actividad reciente se construira con pagos, ordenes y egresos." />
+          <EmptyState v-if="!timeline.length" icon="dashboard" title="Sin actividad" description="La actividad reciente se construira con pagos, ventas, ordenes y egresos." />
         </div>
       </BaseCard>
 
@@ -156,6 +156,7 @@ const metrics = reactive({
   total_pagos: 0,
 })
 const egresos = ref([])
+const otrosIngresos = ref([])
 const pagos = ref([])
 const ordenes = ref([])
 const clientes = ref([])
@@ -188,12 +189,15 @@ const utilidadNeta = computed(() => Number(metrics.ingresos_totales || 0) - tota
 
 const ingresosMes = computed(() => {
   const now = new Date()
-  return pagos.value
-    .filter((pago) => {
-      const date = new Date(pago.created_at)
-      return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
-    })
-    .reduce((sum, pago) => sum + Number(pago.valor || 0), 0)
+  const enEsteMes = (item) => {
+    const date = new Date(item.created_at)
+    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
+  }
+
+  const pagosMes = pagos.value.filter(enEsteMes).reduce((sum, pago) => sum + Number(pago.valor || 0), 0)
+  const otrosIngresosMes = otrosIngresos.value.filter(enEsteMes).reduce((sum, item) => sum + Number(item.valor || 0), 0)
+
+  return pagosMes + otrosIngresosMes
 })
 
 const orderStatus = computed(() => statusGroups.map((group) => ({ ...group, value: countOrders(group.match) })))
@@ -308,6 +312,14 @@ const timeline = computed(() => {
       title: 'Egreso registrado',
       description: `${egreso.categoria || 'gasto'} · ${formatCurrency(egreso.valor)}`,
     })),
+    ...otrosIngresos.value.map((ingreso) => ({
+      id: `ingreso-${ingreso.id}`,
+      date: ingreso.created_at,
+      icon: 'trend-up',
+      tone: 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300',
+      title: 'Venta registrada',
+      description: `${(ingreso.categoria || 'otros').replace('_', ' ')} · ${formatCurrency(ingreso.valor)}`,
+    })),
     ...ordenes.value.map((orden) => ({
       id: `orden-${orden.id}`,
       date: orden.created_at || orden.fecha,
@@ -335,7 +347,7 @@ function buildDailySeries(days) {
     day.setDate(now.getDate() - index)
     const key = day.toISOString().slice(0, 10)
     labels.push(days === 1 ? 'Hoy' : `${day.getDate()}/${day.getMonth() + 1}`)
-    ingresos.push(sumByDate(pagos.value, key, ['valor', 'monto', 'total']))
+    ingresos.push(sumByDate(pagos.value, key, ['valor', 'monto', 'total']) + sumByDate(otrosIngresos.value, key, ['valor']))
     egresosSerie.push(sumByDate(egresos.value, key, ['valor']))
   }
 
@@ -405,6 +417,7 @@ onMounted(async () => {
 
     Object.assign(metrics, dashboardResponse.data)
     egresos.value = movimientosResponse.data.filter((movimiento) => movimiento.tipo === 'egreso')
+    otrosIngresos.value = movimientosResponse.data.filter((movimiento) => movimiento.tipo === 'ingreso')
     pagos.value = pagosResponse.data
     ordenes.value = ordenesResponse.data
     clientes.value = clientesResponse.data

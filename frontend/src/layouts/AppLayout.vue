@@ -151,8 +151,9 @@ const navGroups = [
   {
     label: 'Finanzas',
     items: [
-      { name: 'Caja', route: 'caja', icon: 'wallet' },
       { name: 'Pagos', route: 'pagos', icon: 'payments' },
+      { name: 'Otros ingresos', route: 'ingresos', icon: 'trend-up' },
+      { name: 'Egresos', route: 'caja', icon: 'trend-down' },
     ],
   },
   {
@@ -164,13 +165,16 @@ const navGroups = [
 const allNavItems = navGroups.flatMap((group) => group.items)
 
 // la bottom nav de mobile solo tiene lugar para las secciones de uso
-// diario; Pagos y Configuracion quedan detras del boton "Menu" (abre
-// el drawer del sidebar completo)
+// diario en el mostrador; "Ingresos" (ventas rapidas sin factura) le
+// gana el lugar a "Egresos" porque se registra sobre la marcha desde
+// el celular, mientras que los egresos suelen cargarse desde el
+// escritorio al cierre del dia. Pagos, Egresos y Configuracion quedan
+// detras del boton "Menu" (abre el drawer del sidebar completo)
 const bottomNavItems = [
   { name: 'Inicio', route: 'dashboard', icon: 'dashboard' },
   { name: 'Ordenes', route: 'ordenes', icon: 'orders' },
   { name: 'Clientes', route: 'clientes', icon: 'users' },
-  { name: 'Caja', route: 'caja', icon: 'wallet' },
+  { name: 'Ingresos', route: 'ingresos', icon: 'trend-up' },
 ]
 
 // rutas hijas que no tienen su propio item de nav (ej. la ficha de un

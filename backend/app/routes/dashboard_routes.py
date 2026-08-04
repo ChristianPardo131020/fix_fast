@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.cliente import Cliente
 from app.models.orden import Orden
 from app.models.pago import Pago
+from app.models.movimiento_caja import MovimientoCaja
 
 from app.schemas.dashboard_schema import (
     DashboardResponse
@@ -46,12 +47,26 @@ def obtener_dashboard(
         Orden.estado == "entregado"
     ).count()
 
-    ingresos_totales = db.query(
+    # Ingresos totales = pagos facturados de ordenes + otros ingresos
+    # sin factura (ventas de pilas, accesorios, etc. registrados en
+    # movimientos_caja con tipo="ingreso").
+    ingresos_pagos = db.query(
         func.coalesce(
             func.sum(Pago.valor),
             0
         )
     ).scalar()
+
+    otros_ingresos = db.query(
+        func.coalesce(
+            func.sum(MovimientoCaja.valor),
+            0
+        )
+    ).filter(
+        MovimientoCaja.tipo == "ingreso"
+    ).scalar()
+
+    ingresos_totales = ingresos_pagos + otros_ingresos
 
     saldo_pendiente = db.query(
         func.coalesce(
