@@ -39,19 +39,22 @@
         </div>
       </div>
     </div>
-    <div v-else-if="filteredOrdenes.length" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      <OrderCard
-        v-for="orden in filteredOrdenes"
-        :key="orden.id"
-        :orden="orden"
-        :cliente-nombre="clienteNombre(orden)"
-        :estados="estados"
-        @edit="openEdit"
-        @pagar="openPago"
-        @detalles="openDetalles"
-        @cambiar-estado="cambiarEstado"
-      />
-    </div>
+    <template v-else-if="filteredOrdenes.length">
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <OrderCard
+          v-for="orden in pagedOrdenes"
+          :key="orden.id"
+          :orden="orden"
+          :cliente-nombre="clienteNombre(orden)"
+          :estados="estados"
+          @edit="openEdit"
+          @pagar="openPago"
+          @detalles="openDetalles"
+          @cambiar-estado="cambiarEstado"
+        />
+      </div>
+      <Paginator :page="currentPage" :total-pages="totalPages" :total-items="filteredOrdenes.length" @update:page="currentPage = $event" />
+    </template>
     <BaseCard v-else content-class="p-4">
       <EmptyState icon="orders" title="No hay ordenes" description="Registra una orden para iniciar el seguimiento tecnico." />
     </BaseCard>
@@ -126,7 +129,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import BaseButton from '../components/BaseButton.vue'
@@ -136,6 +139,7 @@ import BaseModal from '../components/BaseModal.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FabButton from '../components/FabButton.vue'
 import OrderCard from '../components/OrderCard.vue'
+import Paginator from '../components/Paginator.vue'
 import { clientesApi, ordenesApi, pagosApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
@@ -170,6 +174,20 @@ const filteredOrdenes = computed(() => {
     const matchesStatus = !statusFilter.value || orden.estado === statusFilter.value
     return matchesSearch && matchesStatus
   })
+})
+
+const PAGE_SIZE = 12
+const currentPage = ref(1)
+const totalPages = computed(() => Math.max(Math.ceil(filteredOrdenes.value.length / PAGE_SIZE), 1))
+const pagedOrdenes = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return filteredOrdenes.value.slice(start, start + PAGE_SIZE)
+})
+
+// Si cambia la busqueda/filtro (o se crea/borra una orden), la pagina
+// actual puede dejar de existir - se vuelve a la 1.
+watch(filteredOrdenes, () => {
+  currentPage.value = 1
 })
 
 function clienteNombre(orden) {

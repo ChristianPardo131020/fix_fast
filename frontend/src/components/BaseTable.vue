@@ -17,7 +17,7 @@
       </div>
       <div
         v-else
-        v-for="row in rows"
+        v-for="row in pagedRows"
         :key="row.id || row._key"
         class="rounded-xl border border-slate-200 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-slate-900"
       >
@@ -63,7 +63,7 @@
                 </slot>
               </td>
             </tr>
-            <tr v-for="row in rows" v-else :key="row.id || row._key" class="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
+            <tr v-for="row in pagedRows" v-else :key="row.id || row._key" class="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
               <td v-for="column in columns" :key="column.key" class="whitespace-nowrap px-4 py-3 text-slate-700 dark:text-slate-200">
                 <slot :name="column.key" :row="row" :value="row[column.key]">
                   {{ row[column.key] ?? '-' }}
@@ -77,13 +77,37 @@
         </table>
       </div>
     </div>
+
+    <Paginator v-if="!loading" :page="currentPage" :total-pages="totalPages" :total-items="rows.length" @update:page="currentPage = $event" />
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed, ref, watch } from 'vue'
+import Paginator from './Paginator.vue'
+
+const props = defineProps({
   columns: { type: Array, required: true },
   rows: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  pageSize: { type: Number, default: 20 },
 })
+
+const currentPage = ref(1)
+
+const totalPages = computed(() => Math.max(Math.ceil(props.rows.length / props.pageSize), 1))
+
+const pagedRows = computed(() => {
+  const start = (currentPage.value - 1) * props.pageSize
+  return props.rows.slice(start, start + props.pageSize)
+})
+
+// Si el listado filtrado cambia (busqueda, filtros, o se borra/crea un
+// registro) la pagina actual puede dejar de existir - se vuelve a la 1.
+watch(
+  () => props.rows,
+  () => {
+    currentPage.value = 1
+  },
+)
 </script>

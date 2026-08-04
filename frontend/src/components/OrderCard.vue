@@ -74,9 +74,13 @@ function confirmarEstado() {
   cambiandoEstado.value = false
 }
 
+// Si la orden ya tiene fecha de entrega, "dias en taller" es la duracion
+// real de la reparacion (fecha_entrega - fecha_ingreso), no crece para
+// siempre. Sin fecha de entrega (orden activa), sigue contando hasta hoy.
 const diasEnTaller = computed(() => {
   if (!props.orden.fecha_ingreso) return 0
-  const ms = Date.now() - new Date(props.orden.fecha_ingreso).getTime()
+  const fin = props.orden.fecha_entrega ? new Date(props.orden.fecha_entrega).getTime() : Date.now()
+  const ms = fin - new Date(props.orden.fecha_ingreso).getTime()
   return Math.max(Math.floor(ms / 86_400_000), 0)
 })
 

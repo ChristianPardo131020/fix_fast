@@ -218,9 +218,12 @@ const clienteNombre = computed(() => {
   return cliente?.nombre || cliente?.name || `Cliente ${orden.value.cliente_id || '-'}`
 })
 
+// Igual que en OrderCard.vue: con fecha de entrega, es la duracion real
+// de la reparacion; sin ella (orden activa), sigue contando hasta hoy.
 const diasEnTaller = computed(() => {
   if (!orden.value?.fecha_ingreso) return 0
-  const ms = Date.now() - new Date(orden.value.fecha_ingreso).getTime()
+  const fin = orden.value.fecha_entrega ? new Date(orden.value.fecha_entrega).getTime() : Date.now()
+  const ms = fin - new Date(orden.value.fecha_ingreso).getTime()
   return Math.max(Math.floor(ms / 86_400_000), 0)
 })
 
