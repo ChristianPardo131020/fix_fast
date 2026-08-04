@@ -45,10 +45,27 @@
 
     <BaseModal v-model="modalOpen" :title="editingId ? 'Editar orden' : 'Nueva orden'" subtitle="Informacion tecnica y financiera del equipo.">
       <form class="grid gap-4" @submit.prevent="saveOrden">
-        <BaseInput v-model="form.cliente_id" label="Cliente" type="select" required>
-          <option value="">Selecciona un cliente</option>
-          <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">{{ cliente.nombre || cliente.name || `Cliente ${cliente.id}` }}</option>
-        </BaseInput>
+        <div>
+          <BaseInput v-model="form.cliente_id" label="Cliente" type="select" required>
+            <option value="">Selecciona un cliente</option>
+            <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">{{ cliente.nombre || cliente.name || `Cliente ${cliente.id}` }}</option>
+          </BaseInput>
+          <button
+            type="button"
+            class="mt-1.5 text-sm font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400"
+            @click="toggleNewCliente"
+          >
+            {{ showNewCliente ? 'Cancelar' : '+ El cliente no existe, crearlo' }}
+          </button>
+
+          <div v-if="showNewCliente" class="mt-3 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 dark:border-slate-800 dark:bg-slate-900">
+            <BaseInput v-model="newCliente.nombre" label="Nombre del cliente" placeholder="Nombre completo" required />
+            <BaseInput v-model="newCliente.telefono" label="Telefono" />
+            <div class="sm:col-span-2 flex justify-end">
+              <BaseButton type="button" size="sm" :loading="savingCliente" @click="saveNewCliente">Guardar cliente</BaseButton>
+            </div>
+          </div>
+        </div>
         <div class="grid gap-4 sm:grid-cols-3">
           <BaseInput v-model="form.equipo" label="Equipo" placeholder="Celular, tablet..." required />
           <BaseInput v-model="form.marca" label="Marca" />
@@ -97,6 +114,10 @@ const saving = ref(false)
 const editingId = ref(null)
 const estados = ['Pendiente', 'En proceso', 'Reparado', 'Entregado', 'Cancelado']
 
+const showNewCliente = ref(false)
+const savingCliente = ref(false)
+const newCliente = reactive({ nombre: '', telefono: '' })
+
 const form = reactive({ cliente_id: '', equipo: '', marca: '', modelo: '', falla: '', estado: 'Pendiente', valor: 0, saldo: 0, observaciones: '' })
 const columns = [
   { key: 'cliente', label: 'Cliente' },
@@ -124,6 +145,31 @@ function clienteNombre(orden) {
 function resetForm() {
   Object.assign(form, { cliente_id: '', equipo: '', marca: '', modelo: '', falla: '', estado: 'Pendiente', valor: 0, saldo: 0, observaciones: '' })
   editingId.value = null
+  showNewCliente.value = false
+  Object.assign(newCliente, { nombre: '', telefono: '' })
+}
+
+function toggleNewCliente() {
+  showNewCliente.value = !showNewCliente.value
+  Object.assign(newCliente, { nombre: '', telefono: '' })
+}
+
+async function saveNewCliente() {
+  if (!newCliente.nombre.trim()) {
+    return
+  }
+
+  savingCliente.value = true
+
+  try {
+    const response = await run(() => clientesApi.create({ ...newCliente }), 'Cliente creado correctamente')
+    clientes.value.push(response.data)
+    form.cliente_id = response.data.id
+    showNewCliente.value = false
+    Object.assign(newCliente, { nombre: '', telefono: '' })
+  } finally {
+    savingCliente.value = false
+  }
 }
 
 function openCreate() {
