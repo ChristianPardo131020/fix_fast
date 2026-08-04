@@ -1,0 +1,204 @@
+<template>
+  <div class="space-y-6">
+    <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">Egresos</span>
+          <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">Caja operativa</span>
+        </div>
+        <h2 class="mt-3 text-2xl font-semibold text-slate-950 dark:text-white">Caja y egresos</h2>
+        <p class="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+          Controla arriendos, empleados, servicios, compras, herramientas, transportes y otros gastos del taller.
+        </p>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <BaseButton variant="secondary" disabled>Exportar Excel</BaseButton>
+        <BaseButton variant="secondary" disabled>Reporte PDF</BaseButton>
+        <BaseButton icon="plus" @click="modalOpen = true">Nuevo egreso</BaseButton>
+      </div>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <StatCard label="Total egresos" :value="formatCurrency(summary.egresos)" icon="cash" tone="rose" hint="Gastos y salidas filtradas" />
+      <StatCard label="Egreso promedio" :value="formatCurrency(summary.promedio)" icon="dashboard" tone="slate" hint="Promedio por movimiento" />
+      <StatCard label="Mayor egreso" :value="formatCurrency(summary.mayor)" icon="cash" tone="amber" hint="Salida mas alta filtrada" />
+      <StatCard label="Movimientos" :value="formatNumber(filteredMovimientos.length)" icon="orders" tone="sky" hint="Registros de gasto" />
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <BaseCard title="Egresos por metodo" subtitle="Distribucion de salidas segun la forma de pago">
+        <div class="space-y-5">
+          <div v-for="item in methodBars" :key="item.label">
+            <div class="mb-2 flex items-center justify-between text-sm">
+              <span class="font-medium text-slate-700 dark:text-slate-200">{{ item.label }}</span>
+              <span class="text-slate-500 dark:text-slate-400">{{ formatCurrency(item.value) }}</span>
+            </div>
+            <div class="h-4 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div class="h-full rounded-full bg-slate-950 transition-all dark:bg-white" :style="{ width: `${item.percent}%` }" />
+            </div>
+          </div>
+        </div>
+        <EmptyState v-if="!methodBars.length" icon="cash" title="Sin egresos" description="Registra gastos para visualizar la caja por metodo de pago." />
+        <div class="mt-6 grid gap-3 sm:grid-cols-3">
+          <div v-for="metric in miniMetrics" :key="metric.label" class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ metric.label }}</p>
+            <p class="mt-2 text-lg font-semibold text-slate-950 dark:text-white">{{ metric.value }}</p>
+          </div>
+        </div>
+      </BaseCard>
+
+      <BaseCard title="Gastos por categoria" subtitle="Ranking de egresos para decisiones rapidas">
+        <div v-if="expenseCategories.length" class="space-y-4">
+          <div v-for="item in expenseCategories" :key="item.categoria">
+            <div class="mb-2 flex items-center justify-between gap-4 text-sm">
+              <span class="font-medium capitalize text-slate-700 dark:text-slate-200">{{ item.categoria }}</span>
+              <span class="text-slate-500 dark:text-slate-400">{{ formatCurrency(item.total) }}</span>
+            </div>
+            <div class="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div class="h-full rounded-full bg-rose-500" :style="{ width: `${item.percent}%` }" />
+            </div>
+          </div>
+        </div>
+        <EmptyState v-else icon="cash" title="Sin egresos" description="Los gastos por categoria apareceran cuando registres egresos." />
+      </BaseCard>
+    </div>
+
+    <BaseCard title="Egresos de caja" subtitle="Gastos operativos y trazabilidad financiera" content-class="p-4">
+      <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_190px_170px]">
+        <label class="relative block">
+          <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+          <input v-model="filters.search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar descripcion, metodo o categoria" />
+        </label>
+        <BaseInput v-model="filters.categoria" type="select">
+          <option value="">Todas las categorias</option>
+          <option v-for="categoria in categorias" :key="categoria" :value="categoria">{{ categoria }}</option>
+        </BaseInput>
+        <BaseInput v-model="filters.fecha" type="date" />
+      </div>
+
+      <FinanceMovementsTable :rows="filteredMovimientos" :loading="loading" @delete="removeMovimiento" />
+    </BaseCard>
+
+    <MovimientoCajaModal v-model="modalOpen" :loading="saving" @save="saveMovimiento" />
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, reactive, ref } from 'vue'
+import AppIcon from '../components/AppIcon.vue'
+import BaseButton from '../components/BaseButton.vue'
+import BaseCard from '../components/BaseCard.vue'
+import BaseInput from '../components/BaseInput.vue'
+import EmptyState from '../components/EmptyState.vue'
+import FinanceMovementsTable from '../components/FinanceMovementsTable.vue'
+import MovimientoCajaModal from '../components/MovimientoCajaModal.vue'
+import StatCard from '../components/StatCard.vue'
+import { movimientosCajaApi } from '../api/movimientosCajaApi'
+import { useApiState } from '../composables/useApiState'
+import { useFormatters } from '../composables/useFormatters'
+
+const { formatCurrency, formatNumber } = useFormatters()
+const { loading, run } = useApiState()
+
+const movimientos = ref([])
+const modalOpen = ref(false)
+const saving = ref(false)
+const categorias = ['arriendo', 'empleado', 'servicios', 'herramientas', 'transporte', 'compra', 'prestamo', 'otros']
+const filters = reactive({ search: '', categoria: '', fecha: '' })
+
+const filteredMovimientos = computed(() => {
+  const term = filters.search.toLowerCase().trim()
+
+  return movimientos.value.filter((movimiento) => {
+    const matchesSearch = !term || JSON.stringify(movimiento).toLowerCase().includes(term)
+    const matchesTipo = movimiento.tipo === 'egreso'
+    const matchesCategoria = !filters.categoria || movimiento.categoria === filters.categoria
+    const matchesFecha = !filters.fecha || movimiento.created_at?.startsWith(filters.fecha)
+
+    return matchesSearch && matchesTipo && matchesCategoria && matchesFecha
+  })
+})
+
+const summary = computed(() => {
+  const valores = filteredMovimientos.value.map((item) => Number(item.valor || 0))
+  const egresos = valores.reduce((sum, valor) => sum + valor, 0)
+
+  return {
+    egresos,
+    promedio: valores.length ? egresos / valores.length : 0,
+    mayor: Math.max(...valores, 0),
+  }
+})
+
+const methodBars = computed(() => {
+  const totals = filteredMovimientos.value.reduce((acc, item) => {
+    const method = item.metodo_pago || 'sin metodo'
+    acc[method] = (acc[method] || 0) + Number(item.valor || 0)
+    return acc
+  }, {})
+
+  const max = Math.max(...Object.values(totals), 1)
+
+  return Object.entries(totals)
+    .map(([label, value]) => ({ label, value, percent: Math.max((value / max) * 100, 6) }))
+    .sort((a, b) => b.value - a.value)
+})
+
+const expenseCategories = computed(() => {
+  const totals = filteredMovimientos.value
+    .filter((item) => item.tipo === 'egreso')
+    .reduce((acc, item) => {
+      const categoria = item.categoria || 'otros'
+      acc[categoria] = (acc[categoria] || 0) + Number(item.valor || 0)
+      return acc
+    }, {})
+
+  const max = Math.max(...Object.values(totals), 1)
+
+  return Object.entries(totals)
+    .map(([categoria, total]) => ({ categoria, total, percent: Math.max((total / max) * 100, 6) }))
+    .sort((a, b) => b.total - a.total)
+})
+
+const miniMetrics = computed(() => [
+  { label: 'Movimientos', value: formatNumber(filteredMovimientos.value.length) },
+  { label: 'Categorias', value: formatNumber(new Set(filteredMovimientos.value.map((item) => item.categoria)).size) },
+  { label: 'Ticket promedio', value: formatCurrency(averageTicket.value) },
+])
+
+const averageTicket = computed(() => {
+  if (!filteredMovimientos.value.length) return 0
+  const total = filteredMovimientos.value.reduce((sum, item) => sum + Number(item.valor || 0), 0)
+  return total / filteredMovimientos.value.length
+})
+
+async function loadMovimientos() {
+  const response = await run(() => movimientosCajaApi.list())
+  movimientos.value = response.data.filter((movimiento) => movimiento.tipo === 'egreso')
+}
+
+async function saveMovimiento(payload) {
+  if (!payload.valor || payload.valor <= 0) {
+    return
+  }
+
+  saving.value = true
+
+  try {
+    await run(() => movimientosCajaApi.create({ ...payload, tipo: 'egreso' }), 'Egreso registrado')
+    modalOpen.value = false
+    await loadMovimientos()
+  } finally {
+    saving.value = false
+  }
+}
+
+async function removeMovimiento(movimiento) {
+  if (!confirm(`Eliminar movimiento de ${formatCurrency(movimiento.valor)}?`)) return
+  await run(() => movimientosCajaApi.remove(movimiento.id), 'Movimiento eliminado')
+  await loadMovimientos()
+}
+
+onMounted(loadMovimientos)
+</script>
