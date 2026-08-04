@@ -1,5 +1,21 @@
 <template>
-  <div class="space-y-6">
+  <div v-if="initialLoading" class="space-y-6">
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div v-for="n in 4" :key="n" class="animate-pulse rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <div class="h-3 w-24 rounded bg-slate-200 dark:bg-slate-800" />
+        <div class="mt-3 h-7 w-20 rounded bg-slate-200 dark:bg-slate-800" />
+      </div>
+    </section>
+    <section class="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
+      <div class="h-[400px] animate-pulse rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" />
+      <div class="h-[400px] animate-pulse rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" />
+    </section>
+    <section class="grid gap-6 xl:grid-cols-3">
+      <div v-for="n in 3" :key="n" class="h-64 animate-pulse rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" />
+    </section>
+  </div>
+
+  <div v-else class="space-y-6">
     <!-- Fila 1: lo mas importante primero -->
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard label="Equipos en reparacion" :value="formatNumber(enReparacionCount)" icon="wrench" tone="brand" hint="Trabajos activos en el taller" />
@@ -128,6 +144,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcEleme
 
 const { formatCurrency, formatDate, formatNumber } = useFormatters()
 const { run } = useApiState()
+const initialLoading = ref(true)
 const range = ref('30d')
 const metrics = reactive({
   total_clientes: 0,
@@ -377,18 +394,22 @@ function formatShortMoney(value) {
 }
 
 onMounted(async () => {
-  const [dashboardResponse, movimientosResponse, pagosResponse, ordenesResponse, clientesResponse] = await Promise.all([
-    run(() => dashboardApi.get()),
-    run(() => movimientosCajaApi.list()),
-    run(() => pagosApi.list()),
-    run(() => ordenesApi.list()),
-    run(() => clientesApi.list()),
-  ])
+  try {
+    const [dashboardResponse, movimientosResponse, pagosResponse, ordenesResponse, clientesResponse] = await Promise.all([
+      run(() => dashboardApi.get()),
+      run(() => movimientosCajaApi.list()),
+      run(() => pagosApi.list()),
+      run(() => ordenesApi.list()),
+      run(() => clientesApi.list()),
+    ])
 
-  Object.assign(metrics, dashboardResponse.data)
-  egresos.value = movimientosResponse.data.filter((movimiento) => movimiento.tipo === 'egreso')
-  pagos.value = pagosResponse.data
-  ordenes.value = ordenesResponse.data
-  clientes.value = clientesResponse.data
+    Object.assign(metrics, dashboardResponse.data)
+    egresos.value = movimientosResponse.data.filter((movimiento) => movimiento.tipo === 'egreso')
+    pagos.value = pagosResponse.data
+    ordenes.value = ordenesResponse.data
+    clientes.value = clientesResponse.data
+  } finally {
+    initialLoading.value = false
+  }
 })
 </script>

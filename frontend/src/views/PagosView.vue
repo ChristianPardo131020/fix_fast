@@ -79,9 +79,11 @@ import StatCard from '../components/StatCard.vue'
 import { ordenesApi, pagosApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
+import { useUiStore } from '../stores/ui'
 
 const { formatCurrency, formatDate, formatNumber } = useFormatters()
 const { loading, run } = useApiState()
+const ui = useUiStore()
 const pagos = ref([])
 const ordenes = ref([])
 const search = ref('')
@@ -129,7 +131,11 @@ async function savePago() {
 }
 
 async function removePago(pago) {
-  if (!confirm(`Eliminar el pago #${pago.id}?`)) return
+  const confirmed = await ui.confirm({
+    title: `Eliminar el pago #${pago.id}`,
+    message: 'Esta accion no se puede deshacer.',
+  })
+  if (!confirmed) return
   await run(() => pagosApi.remove(pago.id), 'Pago eliminado')
   await loadData()
 }

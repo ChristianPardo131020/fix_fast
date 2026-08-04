@@ -5,8 +5,12 @@
         <h2 class="text-xl font-semibold text-slate-950 dark:text-white">Ordenes</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400">Control tecnico, estados, valores y saldos por reparar.</p>
       </div>
-      <BaseButton icon="plus" @click="openCreate">Nueva orden</BaseButton>
+      <div class="hidden sm:block">
+        <BaseButton icon="plus" @click="openCreate">Nueva orden</BaseButton>
+      </div>
     </div>
+
+    <FabButton label="Nueva orden" @click="openCreate" />
 
     <BaseCard content-class="p-4">
       <div class="grid gap-3 md:grid-cols-[1fr_220px]">
@@ -21,7 +25,21 @@
       </div>
     </BaseCard>
 
-    <div v-if="filteredOrdenes.length" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div v-if="initialLoading" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div v-for="n in 6" :key="n" class="animate-pulse rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div class="h-5 w-24 rounded-full bg-slate-200 dark:bg-slate-800" />
+        <div class="mt-4 space-y-2">
+          <div class="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-800" />
+          <div class="h-3 w-1/2 rounded bg-slate-200 dark:bg-slate-800" />
+        </div>
+        <div class="mt-5 h-12 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <div class="h-8 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+          <div class="h-8 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+        </div>
+      </div>
+    </div>
+    <div v-else-if="filteredOrdenes.length" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <OrderCard
         v-for="orden in filteredOrdenes"
         :key="orden.id"
@@ -104,63 +122,27 @@
       </form>
     </BaseModal>
 
-    <!-- Ver detalles (solo lectura) -->
-    <BaseModal v-model="detallesModalOpen" :title="detalleOrden ? `Orden #${detalleOrden.id}` : ''" subtitle="Resumen de la orden.">
-      <div v-if="detalleOrden" class="space-y-4 text-sm">
-        <div class="flex items-center justify-between">
-          <StatusBadge :value="detalleOrden.estado" />
-          <span class="text-xs text-slate-500">Ingreso: {{ formatDate(detalleOrden.fecha_ingreso) }}</span>
-        </div>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <div>
-            <p class="text-xs text-slate-400">Cliente</p>
-            <p class="font-medium text-slate-950 dark:text-white">{{ clienteNombre(detalleOrden) }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-400">Equipo</p>
-            <p class="font-medium text-slate-950 dark:text-white">{{ detalleOrden.equipo || 'Sin equipo' }} · {{ detalleOrden.marca || '-' }} {{ detalleOrden.modelo || '' }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-400">Valor total</p>
-            <p class="font-medium text-slate-950 dark:text-white">{{ formatCurrency(detalleOrden.valor) }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-400">Saldo pendiente</p>
-            <p class="font-medium text-slate-950 dark:text-white">{{ formatCurrency(detalleOrden.saldo) }}</p>
-          </div>
-        </div>
-        <div>
-          <p class="text-xs text-slate-400">Falla reportada</p>
-          <p class="mt-1 rounded-lg bg-slate-50 p-3 text-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ detalleOrden.problema || 'Sin descripcion' }}</p>
-        </div>
-        <div>
-          <p class="text-xs text-slate-400">Diagnostico tecnico</p>
-          <p class="mt-1 rounded-lg bg-slate-50 p-3 text-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ detalleOrden.diagnostico || 'Sin diagnostico aun' }}</p>
-        </div>
-        <div class="flex justify-end">
-          <BaseButton variant="secondary" @click="detallesModalOpen = false">Cerrar</BaseButton>
-        </div>
-      </div>
-    </BaseModal>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
 import BaseInput from '../components/BaseInput.vue'
 import BaseModal from '../components/BaseModal.vue'
 import EmptyState from '../components/EmptyState.vue'
+import FabButton from '../components/FabButton.vue'
 import OrderCard from '../components/OrderCard.vue'
-import StatusBadge from '../components/StatusBadge.vue'
 import { clientesApi, ordenesApi, pagosApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 
-const { formatCurrency, formatDate } = useFormatters()
+const router = useRouter()
 const { loading, run } = useApiState()
+const initialLoading = ref(true)
 const ordenes = ref([])
 const clientes = ref([])
 const search = ref('')
@@ -180,9 +162,6 @@ const pagoModalOpen = ref(false)
 const savingPago = ref(false)
 const pagoTarget = ref(null)
 const pagoForm = reactive({ valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
-
-const detallesModalOpen = ref(false)
-const detalleOrden = ref(null)
 
 const filteredOrdenes = computed(() => {
   const term = search.value.toLowerCase().trim()
@@ -256,14 +235,17 @@ function openPago(orden) {
 }
 
 function openDetalles(orden) {
-  detalleOrden.value = orden
-  detallesModalOpen.value = true
+  router.push({ name: 'orden-detalle', params: { id: orden.id } })
 }
 
 async function loadData() {
-  const [ordenesResponse, clientesResponse] = await Promise.all([run(() => ordenesApi.list()), run(() => clientesApi.list())])
-  ordenes.value = ordenesResponse.data
-  clientes.value = clientesResponse.data
+  try {
+    const [ordenesResponse, clientesResponse] = await Promise.all([run(() => ordenesApi.list()), run(() => clientesApi.list())])
+    ordenes.value = ordenesResponse.data
+    clientes.value = clientesResponse.data
+  } finally {
+    initialLoading.value = false
+  }
 }
 
 async function saveOrden() {

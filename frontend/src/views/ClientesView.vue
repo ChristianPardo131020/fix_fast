@@ -5,8 +5,12 @@
         <h2 class="text-xl font-semibold text-slate-950 dark:text-white">Clientes</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400">Base de datos operativa para recepcion y seguimiento.</p>
       </div>
-      <BaseButton icon="plus" @click="openCreate">Crear cliente</BaseButton>
+      <div class="hidden sm:block">
+        <BaseButton icon="plus" @click="openCreate">Crear cliente</BaseButton>
+      </div>
     </div>
+
+    <FabButton label="Crear cliente" @click="openCreate" />
 
     <BaseCard content-class="p-4">
       <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -19,10 +23,10 @@
 
       <BaseTable :columns="columns" :rows="filteredClientes" :loading="loading">
         <template #nombre="{ row }">
-          <div>
+          <RouterLink :to="{ name: 'cliente-detalle', params: { id: row.id } }" class="block hover:underline">
             <p class="font-semibold text-slate-950 dark:text-white">{{ row.nombre || row.name || 'Cliente sin nombre' }}</p>
             <p class="text-xs text-slate-500">ID {{ row.id }}</p>
-          </div>
+          </RouterLink>
         </template>
         <template #telefono="{ row }">{{ row.telefono || row.phone || '-' }}</template>
         <template #email="{ row }">{{ row.email || row.correo || '-' }}</template>
@@ -63,14 +67,17 @@ import BaseInput from '../components/BaseInput.vue'
 import BaseModal from '../components/BaseModal.vue'
 import BaseTable from '../components/BaseTable.vue'
 import EmptyState from '../components/EmptyState.vue'
+import FabButton from '../components/FabButton.vue'
 import { clientesApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
+import { useUiStore } from '../stores/ui'
 
 const clientes = ref([])
 const search = ref('')
 const modalOpen = ref(false)
 const saving = ref(false)
 const { loading, run } = useApiState()
+const ui = useUiStore()
 
 const form = reactive({ nombre: '', telefono: '', email: '', direccion: '', notas: '' })
 const columns = [
@@ -112,7 +119,12 @@ async function saveCliente() {
 }
 
 async function removeCliente(cliente) {
-  if (!confirm(`Eliminar a ${cliente.nombre || cliente.name || 'este cliente'}?`)) return
+  const nombre = cliente.nombre || cliente.name || 'este cliente'
+  const confirmed = await ui.confirm({
+    title: `Eliminar a ${nombre}`,
+    message: 'Esta accion no se puede deshacer. El cliente se eliminara de forma permanente.',
+  })
+  if (!confirmed) return
   await run(() => clientesApi.remove(cliente.id), 'Cliente eliminado')
   await loadClientes()
 }

@@ -6,6 +6,7 @@ export const useUiStore = defineStore('ui', () => {
   const sidebarCollapsed = ref(localStorage.getItem('fixfast_sidebar_collapsed') === '1')
   const darkMode = ref(localStorage.getItem('fixfast_theme') === 'dark')
   const toasts = ref([])
+  const confirmState = ref(null)
 
   function toggleSidebar() {
     sidebarOpen.value = !sidebarOpen.value
@@ -40,11 +41,26 @@ export const useUiStore = defineStore('ui', () => {
     toasts.value = toasts.value.filter((item) => item.id !== id)
   }
 
+  // Reemplazo del confirm() nativo del navegador: cualquier vista puede hacer
+  // `await ui.confirm({ title, message })` y obtiene una Promise<boolean>,
+  // resuelta cuando el usuario confirma o cancela en ConfirmDialog.vue.
+  function confirm({ title = 'Confirmar accion', message = '', confirmLabel = 'Eliminar', cancelLabel = 'Cancelar', tone = 'danger' } = {}) {
+    return new Promise((resolve) => {
+      confirmState.value = { title, message, confirmLabel, cancelLabel, tone, resolve }
+    })
+  }
+
+  function resolveConfirm(value) {
+    confirmState.value?.resolve(value)
+    confirmState.value = null
+  }
+
   return {
     sidebarOpen,
     sidebarCollapsed,
     darkMode,
     toasts,
+    confirmState,
     toggleSidebar,
     closeSidebar,
     toggleSidebarCollapsed,
@@ -52,5 +68,7 @@ export const useUiStore = defineStore('ui', () => {
     hydrateTheme,
     toast,
     dismissToast,
+    confirm,
+    resolveConfirm,
   }
 })

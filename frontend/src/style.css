@@ -120,3 +120,20 @@ textarea {
 .fade-leave-to {
   opacity: 0;
 }
+
+.page-enter-active {
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.page-leave-active {
+  transition: opacity 0.1s ease;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.page-leave-to {
+  opacity: 0;
+}

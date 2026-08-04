@@ -97,9 +97,11 @@ import StatCard from '../components/StatCard.vue'
 import { movimientosCajaApi } from '../api/movimientosCajaApi'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
+import { useUiStore } from '../stores/ui'
 
 const { formatCurrency, formatNumber } = useFormatters()
 const { loading, run } = useApiState()
+const ui = useUiStore()
 
 const movimientos = ref([])
 const modalOpen = ref(false)
@@ -195,7 +197,11 @@ async function saveMovimiento(payload) {
 }
 
 async function removeMovimiento(movimiento) {
-  if (!confirm(`Eliminar movimiento de ${formatCurrency(movimiento.valor)}?`)) return
+  const confirmed = await ui.confirm({
+    title: `Eliminar movimiento de ${formatCurrency(movimiento.valor)}`,
+    message: 'Esta accion no se puede deshacer.',
+  })
+  if (!confirmed) return
   await run(() => movimientosCajaApi.remove(movimiento.id), 'Movimiento eliminado')
   await loadMovimientos()
 }

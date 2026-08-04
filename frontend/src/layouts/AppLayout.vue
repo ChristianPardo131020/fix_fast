@@ -92,10 +92,37 @@
         </div>
       </header>
 
-      <main class="mx-auto max-w-7xl px-4 py-6 md:px-6">
-        <RouterView />
+      <main class="mx-auto max-w-7xl px-4 py-6 pb-24 md:px-6 lg:pb-6">
+        <RouterView v-slot="{ Component }">
+          <Transition name="page" mode="out-in">
+            <component :is="Component" />
+          </Transition>
+        </RouterView>
       </main>
     </div>
+
+    <nav
+      class="fixed inset-x-0 bottom-0 z-20 flex items-stretch border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden dark:border-slate-800 dark:bg-slate-950/95"
+    >
+      <RouterLink
+        v-for="item in bottomNavItems"
+        :key="item.route"
+        :to="{ name: item.route }"
+        class="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-xs font-medium"
+        :class="isActive(item) ? 'text-brand-600 dark:text-brand-400' : 'text-slate-500 dark:text-slate-400'"
+      >
+        <AppIcon :name="item.icon" class="h-5 w-5" />
+        {{ item.name }}
+      </RouterLink>
+      <button
+        type="button"
+        class="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-xs font-medium text-slate-500 dark:text-slate-400"
+        @click="ui.toggleSidebar"
+      >
+        <AppIcon name="menu" class="h-5 w-5" />
+        Menu
+      </button>
+    </nav>
   </div>
 </template>
 
@@ -136,11 +163,30 @@ const navGroups = [
 
 const allNavItems = navGroups.flatMap((group) => group.items)
 
+// la bottom nav de mobile solo tiene lugar para las secciones de uso
+// diario; Pagos y Configuracion quedan detras del boton "Menu" (abre
+// el drawer del sidebar completo)
+const bottomNavItems = [
+  { name: 'Inicio', route: 'dashboard', icon: 'dashboard' },
+  { name: 'Ordenes', route: 'ordenes', icon: 'orders' },
+  { name: 'Clientes', route: 'clientes', icon: 'users' },
+  { name: 'Caja', route: 'caja', icon: 'wallet' },
+]
+
+// rutas hijas que no tienen su propio item de nav (ej. la ficha de un
+// cliente o el detalle de una orden) heredan el titulo/seccion e
+// indicador activo del item padre
+const childRouteParent = { 'cliente-detalle': 'clientes', 'orden-detalle': 'ordenes' }
+
 function isActive(item) {
-  return route.name === item.route
+  const routeName = childRouteParent[route.name] || route.name
+  return routeName === item.route
 }
 
-const currentItem = computed(() => allNavItems.find((item) => item.route === route.name) || allNavItems[0])
+const currentItem = computed(() => {
+  const routeName = childRouteParent[route.name] || route.name
+  return allNavItems.find((item) => item.route === routeName) || allNavItems[0]
+})
 const currentSection = computed(() => navGroups.find((group) => group.items.includes(currentItem.value))?.label || 'General')
 const currentTitle = computed(() => currentItem.value.name)
 const userInitial = computed(() => (auth.user?.name || 'U').charAt(0).toUpperCase())
