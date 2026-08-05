@@ -47,7 +47,7 @@
       <section class="grid gap-4 sm:grid-cols-3">
         <StatCard label="Valor total" :value="formatCurrency(orden.valor)" icon="cash" tone="brand" />
         <StatCard label="Saldo pendiente" :value="formatCurrency(orden.saldo)" icon="wallet" :tone="Number(orden.saldo) > 0 ? 'orange' : 'green'" />
-        <StatCard label="Dias en taller" :value="`${diasEnTaller} dias`" icon="clock" tone="purple" />
+        <StatCard label="Dias en taller" :value="diasEnTaller === null ? '-' : `${diasEnTaller} dias`" icon="clock" tone="purple" />
       </section>
 
       <div class="inline-flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900">
@@ -219,11 +219,18 @@ const clienteNombre = computed(() => {
 })
 
 // Igual que en OrderCard.vue: con fecha de entrega, es la duracion real
-// de la reparacion; sin ella (orden activa), sigue contando hasta hoy.
+// de la reparacion; sin ella, cuenta hasta hoy si sigue activa, o
+// muestra null (dato desconocido) si ya esta entregada/cancelada pero
+// sin fecha registrada (import historico).
 const diasEnTaller = computed(() => {
-  if (!orden.value?.fecha_ingreso) return 0
-  const fin = orden.value.fecha_entrega ? new Date(orden.value.fecha_entrega).getTime() : Date.now()
-  const ms = fin - new Date(orden.value.fecha_ingreso).getTime()
+  if (!orden.value?.fecha_ingreso) return null
+  if (orden.value.fecha_entrega) {
+    const ms = new Date(orden.value.fecha_entrega).getTime() - new Date(orden.value.fecha_ingreso).getTime()
+    return Math.max(Math.floor(ms / 86_400_000), 0)
+  }
+  const estado = (orden.value.estado || '').toLowerCase()
+  if (estado.includes('entreg') || estado.includes('cancel')) return null
+  const ms = Date.now() - new Date(orden.value.fecha_ingreso).getTime()
   return Math.max(Math.floor(ms / 86_400_000), 0)
 })
 

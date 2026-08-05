@@ -18,7 +18,7 @@
       </div>
       <div>
         <p class="text-slate-400">En taller</p>
-        <p class="mt-0.5 font-medium text-slate-700 dark:text-slate-200">{{ diasEnTaller }} dias</p>
+        <p class="mt-0.5 font-medium text-slate-700 dark:text-slate-200">{{ diasEnTaller === null ? '-' : `${diasEnTaller} dias` }}</p>
       </div>
       <div>
         <p class="text-slate-400">Saldo</p>
@@ -76,11 +76,19 @@ function confirmarEstado() {
 
 // Si la orden ya tiene fecha de entrega, "dias en taller" es la duracion
 // real de la reparacion (fecha_entrega - fecha_ingreso), no crece para
-// siempre. Sin fecha de entrega (orden activa), sigue contando hasta hoy.
+// siempre. Sin fecha de entrega: si sigue activa, cuenta hasta hoy; si ya
+// esta entregada/cancelada pero sin fecha registrada (datos historicos
+// importados), no hay forma honesta de saber cuanto duro, asi que se
+// muestra "-" en vez de inventar un numero.
 const diasEnTaller = computed(() => {
-  if (!props.orden.fecha_ingreso) return 0
-  const fin = props.orden.fecha_entrega ? new Date(props.orden.fecha_entrega).getTime() : Date.now()
-  const ms = fin - new Date(props.orden.fecha_ingreso).getTime()
+  if (!props.orden.fecha_ingreso) return null
+  if (props.orden.fecha_entrega) {
+    const ms = new Date(props.orden.fecha_entrega).getTime() - new Date(props.orden.fecha_ingreso).getTime()
+    return Math.max(Math.floor(ms / 86_400_000), 0)
+  }
+  const estado = (props.orden.estado || '').toLowerCase()
+  if (estado.includes('entreg') || estado.includes('cancel')) return null
+  const ms = Date.now() - new Date(props.orden.fecha_ingreso).getTime()
   return Math.max(Math.floor(ms / 86_400_000), 0)
 })
 
