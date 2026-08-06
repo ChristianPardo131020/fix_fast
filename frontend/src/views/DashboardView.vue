@@ -1,11 +1,22 @@
 <template>
   <div class="space-y-6">
-    <PageHeader title="Resumen general" subtitle="Esto es lo que esta pasando hoy en tu taller.">
+    <PageHeader title="Resumen general" subtitle="Esto es lo que esta pasando en tu taller.">
       <template #actions>
-        <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          <AppIcon name="calendar" class="h-4 w-4" />
-          {{ todayLabel }}
-        </span>
+        <div class="flex items-center gap-2">
+          <select
+            v-model="selectedMonth"
+            class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <option :value="null">Todos los meses</option>
+            <option v-for="(mes, index) in meses" :key="mes" :value="index">{{ mes }}</option>
+          </select>
+          <select
+            v-model="selectedYear"
+            class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
+          </select>
+        </div>
       </template>
     </PageHeader>
 
@@ -28,10 +39,10 @@
   <div v-else class="space-y-6">
     <!-- Fila 1: lo mas importante primero -->
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <StatCard label="Equipos en reparacion" :value="formatNumber(enReparacionCount)" icon="wrench" tone="brand" hint="Trabajos activos en el taller" />
-      <StatCard label="Listos para entregar" :value="formatNumber(listosCount)" icon="check" tone="green" hint="Esperando que el cliente retire" />
-      <StatCard label="Ingresos del mes" :value="formatCurrency(ingresosMes)" icon="payments" tone="brand" hint="Pagos y otros ingresos de este mes" />
-      <StatCard label="Saldo pendiente" :value="formatCurrency(metrics.saldo_pendiente)" icon="cash" tone="orange" hint="Cartera por cobrar" />
+      <StatCard label="Equipos en reparacion" :value="formatNumber(enReparacionCount)" icon="wrench" tone="brand" hint="Ingresaron en el periodo seleccionado" />
+      <StatCard label="Listos para entregar" :value="formatNumber(listosCount)" icon="check" tone="green" hint="Ingresaron en el periodo seleccionado" />
+      <StatCard label="Ingresos del periodo" :value="formatCurrency(ingresosPeriodo)" icon="payments" tone="brand" :hint="`Pagos y otros ingresos · ${periodLabel}`" />
+      <StatCard label="Saldo pendiente" :value="formatCurrency(saldoPendientePeriodo)" icon="cash" tone="orange" hint="De ordenes ingresadas en el periodo" />
     </section>
 
     <!-- Fila 2: graficos -->
@@ -47,9 +58,9 @@
               </span>
             </div>
           </div>
-          <div class="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
-            <button v-for="option in rangeOptions" :key="option.value" :class="range === option.value ? 'bg-white text-slate-950 shadow-sm dark:bg-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'" class="rounded-md px-3 py-1.5 text-sm font-semibold transition" type="button" @click="range = option.value">{{ option.label }}</button>
-          </div>
+          <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            {{ selectedMonth === null ? 'Por mes' : 'Por dia' }} · {{ periodLabel }}
+          </span>
         </div>
         <div class="h-[320px] p-4">
           <Line :data="mainChartData" :options="mainChartOptions" />
@@ -61,7 +72,7 @@
           <div class="relative h-48 w-48 shrink-0">
             <Doughnut :data="ordersDonutData" :options="donutOptions" />
             <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <span class="text-2xl font-semibold text-slate-950 dark:text-white">{{ formatNumber(ordenes.length) }}</span>
+              <span class="text-2xl font-semibold text-slate-950 dark:text-white">{{ formatNumber(ordenesPeriodo.length) }}</span>
               <span class="text-xs text-slate-400">Total</span>
             </div>
           </div>
@@ -80,7 +91,7 @@
 
     <!-- Fila 3: widgets operativos -->
     <section class="grid gap-6 xl:grid-cols-3">
-      <BaseCard title="Ultimas ordenes" subtitle="Trabajos recientes">
+      <BaseCard title="Ultimas ordenes" subtitle="Trabajos recientes del periodo">
         <div class="divide-y divide-slate-100 dark:divide-slate-800">
           <div v-for="orden in recentOrders" :key="orden.id" class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
             <div class="min-w-0">
@@ -89,11 +100,11 @@
             </div>
             <StatusBadge :value="orden.estado || 'recibido'" />
           </div>
-          <EmptyState v-if="!recentOrders.length" icon="orders" title="Sin ordenes recientes" description="Cuando registres ordenes apareceran aqui." />
+          <EmptyState v-if="!recentOrders.length" icon="orders" title="Sin ordenes en este periodo" description="Prueba con otro mes o año para ver ordenes." />
         </div>
       </BaseCard>
 
-      <BaseCard title="Actividad reciente" subtitle="Eventos clave del negocio">
+      <BaseCard title="Actividad reciente" subtitle="Eventos clave del periodo">
         <div class="space-y-4">
           <div v-for="event in timeline" :key="event.id" class="relative flex gap-3">
             <div class="flex flex-col items-center">
@@ -108,7 +119,7 @@
               <p class="mt-1 text-xs text-slate-400">{{ event.time }}</p>
             </div>
           </div>
-          <EmptyState v-if="!timeline.length" icon="dashboard" title="Sin actividad" description="La actividad reciente se construira con pagos, ventas, ordenes y egresos." />
+          <EmptyState v-if="!timeline.length" icon="dashboard" title="Sin actividad en este periodo" description="Prueba con otro mes o año para ver actividad." />
         </div>
       </BaseCard>
 
@@ -143,7 +154,7 @@ import {
   PointElement,
   Tooltip,
 } from 'chart.js'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Doughnut, Line } from 'vue-chartjs'
 import AppIcon from '../components/AppIcon.vue'
 import BaseCard from '../components/BaseCard.vue'
@@ -152,7 +163,7 @@ import PageHeader from '../components/PageHeader.vue'
 import StatCard from '../components/StatCard.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { movimientosCajaApi } from '../api/movimientosCajaApi'
-import { clientesApi, dashboardApi, ordenesApi, pagosApi } from '../api/resources'
+import { clientesApi, ordenesApi, pagosApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 
@@ -161,33 +172,55 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcEleme
 const { formatCurrency, formatDate, formatNumber } = useFormatters()
 const { run } = useApiState()
 const initialLoading = ref(true)
-const range = ref('30d')
-const metrics = reactive({
-  total_clientes: 0,
-  total_ordenes: 0,
-  ordenes_activas: 0,
-  ordenes_entregadas: 0,
-  ingresos_totales: 0,
-  saldo_pendiente: 0,
-  total_pagos: 0,
-})
 const egresos = ref([])
 const otrosIngresos = ref([])
 const pagos = ref([])
 const ordenes = ref([])
 const clientes = ref([])
 
-const todayLabel = computed(() => {
-  const formatted = new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
-  return `Hoy, ${formatted}`
+const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+const mesesCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
+// Filtro de periodo del dashboard completo. selectedMonth en null significa
+// "todos los meses" (agrega todo selectedYear); por defecto arranca en el
+// mes/año actual, que es el recorte que la mayoria va a querer ver primero.
+const now = new Date()
+const selectedYear = ref(now.getFullYear())
+const selectedMonth = ref(now.getMonth())
+
+// El selector de año se arma con los años que realmente tienen datos (mas
+// el año actual, para que nunca quede vacio en una instalacion nueva) en
+// vez de una lista fija que podria no cubrir historico real importado.
+const availableYears = computed(() => {
+  const years = new Set([now.getFullYear()])
+  const dates = [
+    ...ordenes.value.map((orden) => orden.fecha_ingreso || orden.created_at),
+    ...pagos.value.map((pago) => pago.created_at || pago.fecha),
+    ...egresos.value.map((item) => item.created_at),
+    ...otrosIngresos.value.map((item) => item.created_at),
+  ]
+  dates.filter(Boolean).forEach((date) => years.add(Number(String(date).slice(0, 4))))
+  return [...years].sort((a, b) => b - a)
 })
 
-const rangeOptions = [
-  { label: 'Hoy', value: 'today' },
-  { label: '7 dias', value: '7d' },
-  { label: '30 dias', value: '30d' },
-  { label: 'Este mes', value: 'month' },
-]
+// Prefijo ISO para filtrar por coincidencia de texto: "2026" para todo el
+// año, o "2026-08" para un mes especifico. Mismo truco que ya usaba
+// sumByPrefix mas abajo, evita crear objetos Date (y sus problemas de
+// timezone) solo para comparar año/mes.
+const periodKey = computed(() => {
+  const year = String(selectedYear.value)
+  if (selectedMonth.value === null) return year
+  return `${year}-${String(selectedMonth.value + 1).padStart(2, '0')}`
+})
+
+const periodLabel = computed(() => {
+  if (selectedMonth.value === null) return `Todo ${selectedYear.value}`
+  return `${meses[selectedMonth.value]} ${selectedYear.value}`
+})
+
+function matchesPeriod(dateStr) {
+  return Boolean(dateStr) && String(dateStr).startsWith(periodKey.value)
+}
 
 /*
  * Distribucion por estado. Los colores coinciden 1:1 con los hex de
@@ -205,21 +238,27 @@ const statusGroups = [
   { key: 'cancelado', label: 'Cancelado', match: ['cancel'], color: '#ef4444' },
 ]
 
-const totalEgresos = computed(() => egresos.value.reduce((sum, item) => sum + Number(item.valor || 0), 0))
-const utilidadNeta = computed(() => Number(metrics.ingresos_totales || 0) - totalEgresos.value)
+// No hay historico de cambios de estado en el backend (ver comentario mas
+// abajo en timelineEvents de OrdenDetalleView), asi que "estados de
+// ordenes del periodo" se aproxima con las ordenes cuya fecha de INGRESO
+// cae en el periodo elegido, mirando su estado ACTUAL. Es la mejor lectura
+// honesta disponible: "de lo que entro en agosto, como esta hoy".
+const ordenesPeriodo = computed(() => ordenes.value.filter((orden) => matchesPeriod(orden.fecha_ingreso || orden.created_at)))
+const pagosPeriodo = computed(() => pagos.value.filter((pago) => matchesPeriod(pago.created_at || pago.fecha)))
+const otrosIngresosPeriodo = computed(() => otrosIngresos.value.filter((item) => matchesPeriod(item.created_at)))
+const egresosPeriodo = computed(() => egresos.value.filter((item) => matchesPeriod(item.created_at)))
 
-const ingresosMes = computed(() => {
-  const now = new Date()
-  const enEsteMes = (item) => {
-    const date = new Date(item.created_at)
-    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
-  }
+const totalEgresosPeriodo = computed(() => egresosPeriodo.value.reduce((sum, item) => sum + Number(item.valor || 0), 0))
 
-  const pagosMes = pagos.value.filter(enEsteMes).reduce((sum, pago) => sum + Number(pago.valor || 0), 0)
-  const otrosIngresosMes = otrosIngresos.value.filter(enEsteMes).reduce((sum, item) => sum + Number(item.valor || 0), 0)
-
-  return pagosMes + otrosIngresosMes
+const ingresosPeriodo = computed(() => {
+  const pagosSum = pagosPeriodo.value.reduce((sum, pago) => sum + Number(pago.valor || 0), 0)
+  const otrosSum = otrosIngresosPeriodo.value.reduce((sum, item) => sum + Number(item.valor || 0), 0)
+  return pagosSum + otrosSum
 })
+
+const utilidadNeta = computed(() => ingresosPeriodo.value - totalEgresosPeriodo.value)
+
+const saldoPendientePeriodo = computed(() => ordenesPeriodo.value.reduce((sum, orden) => sum + Number(orden.saldo || 0), 0))
 
 const orderStatus = computed(() => statusGroups.map((group) => ({ ...group, value: countOrders(group.match) })))
 const enReparacionCount = computed(() => orderStatus.value.find((item) => item.key === 'reparacion')?.value || 0)
@@ -227,19 +266,40 @@ const listosCount = computed(() => orderStatus.value.find((item) => item.key ===
 
 // Cliente no tiene columna created_at en el backend (ver models/cliente.py).
 // Se aproxima "nuevo" con el id descendente: los clientes solo se crean,
-// nunca se reordenan, asi que el id mas alto es el mas reciente. Si mas
-// adelante se quiere ordenar por fecha real hace falta un ALTER TABLE +
-// migracion, fuera de alcance de este rediseño visual.
+// nunca se reordenan, asi que el id mas alto es el mas reciente. No se
+// puede filtrar por periodo de forma honesta sin esa columna, asi que
+// esta tarjeta queda fuera del filtro de mes/año a proposito.
 const clientesNuevos = computed(() => [...clientes.value].sort((a, b) => Number(b.id) - Number(a.id)).slice(0, 5))
 
-const chartDays = computed(() => {
-  if (range.value === 'today') return 1
-  if (range.value === '7d') return 7
-  if (range.value === 'month') return new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
-  return 30
+// Un punto por mes cuando se ve "todo el año" (12 puntos, agregado
+// mensual); un punto por dia cuando hay un mes especifico seleccionado.
+// Evita mostrar 365 puntos diarios de golpe y hace que "todos los meses"
+// sea realmente una vista comparativa mes a mes.
+const dailySeries = computed(() => {
+  const labels = []
+  const ingresosSerie = []
+  const egresosSerie = []
+
+  if (selectedMonth.value === null) {
+    for (let mes = 0; mes < 12; mes += 1) {
+      const key = `${selectedYear.value}-${String(mes + 1).padStart(2, '0')}`
+      labels.push(mesesCortos[mes])
+      ingresosSerie.push(sumByPrefix(pagos.value, key, ['valor', 'monto', 'total']) + sumByPrefix(otrosIngresos.value, key, ['valor']))
+      egresosSerie.push(sumByPrefix(egresos.value, key, ['valor']))
+    }
+  } else {
+    const daysInMonth = new Date(selectedYear.value, selectedMonth.value + 1, 0).getDate()
+    for (let dia = 1; dia <= daysInMonth; dia += 1) {
+      const key = `${selectedYear.value}-${String(selectedMonth.value + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+      labels.push(String(dia))
+      ingresosSerie.push(sumByPrefix(pagos.value, key, ['valor', 'monto', 'total']) + sumByPrefix(otrosIngresos.value, key, ['valor']))
+      egresosSerie.push(sumByPrefix(egresos.value, key, ['valor']))
+    }
+  }
+
+  return { labels, ingresos: ingresosSerie, egresos: egresosSerie }
 })
 
-const dailySeries = computed(() => buildDailySeries(chartDays.value))
 const mainChartData = computed(() => ({
   labels: dailySeries.value.labels,
   datasets: [
@@ -313,11 +373,11 @@ const donutOptions = {
   },
 }
 
-const recentOrders = computed(() => [...ordenes.value].sort(sortByDate).slice(0, 6))
+const recentOrders = computed(() => [...ordenesPeriodo.value].sort(sortByDate).slice(0, 6))
 
 const timeline = computed(() => {
   const events = [
-    ...pagos.value.map((pago) => ({
+    ...pagosPeriodo.value.map((pago) => ({
       id: `pago-${pago.id}`,
       date: pago.created_at || pago.fecha,
       icon: 'payments',
@@ -325,7 +385,7 @@ const timeline = computed(() => {
       title: 'Ingreso registrado',
       description: formatCurrency(pago.valor || pago.monto || pago.total || 0),
     })),
-    ...egresos.value.map((egreso) => ({
+    ...egresosPeriodo.value.map((egreso) => ({
       id: `egreso-${egreso.id}`,
       date: egreso.created_at,
       icon: 'cash',
@@ -333,7 +393,7 @@ const timeline = computed(() => {
       title: 'Egreso registrado',
       description: `${egreso.categoria || 'gasto'} · ${formatCurrency(egreso.valor)}`,
     })),
-    ...otrosIngresos.value.map((ingreso) => ({
+    ...otrosIngresosPeriodo.value.map((ingreso) => ({
       id: `ingreso-${ingreso.id}`,
       date: ingreso.created_at,
       icon: 'trend-up',
@@ -341,7 +401,7 @@ const timeline = computed(() => {
       title: 'Venta registrada',
       description: `${(ingreso.categoria || 'otros').replace('_', ' ')} · ${formatCurrency(ingreso.valor)}`,
     })),
-    ...ordenes.value.map((orden) => ({
+    ...ordenesPeriodo.value.map((orden) => ({
       id: `orden-${orden.id}`,
       date: orden.created_at || orden.fecha,
       icon: 'orders',
@@ -357,46 +417,14 @@ const timeline = computed(() => {
   }))
 })
 
-function buildDailySeries(days) {
-  const labels = []
-  const ingresos = []
-  const egresosSerie = []
-  const now = new Date()
-
-  for (let index = days - 1; index >= 0; index -= 1) {
-    const day = new Date(now)
-    day.setDate(now.getDate() - index)
-    const key = day.toISOString().slice(0, 10)
-    labels.push(days === 1 ? 'Hoy' : `${day.getDate()}/${day.getMonth() + 1}`)
-    ingresos.push(sumByDate(pagos.value, key, ['valor', 'monto', 'total']) + sumByDate(otrosIngresos.value, key, ['valor']))
-    egresosSerie.push(sumByDate(egresos.value, key, ['valor']))
-  }
-
-  if (!ingresos.some(Boolean) && metrics.ingresos_totales) {
-    distributeTotal(ingresos, metrics.ingresos_totales)
-  }
-
-  if (!egresosSerie.some(Boolean) && totalEgresos.value) {
-    distributeTotal(egresosSerie, totalEgresos.value)
-  }
-
-  return { labels, ingresos, egresos: egresosSerie }
-}
-
-function distributeTotal(target, total) {
-  const weights = target.map((_, index) => 0.7 + ((index % 5) * 0.16))
-  const weightTotal = weights.reduce((sum, value) => sum + value, 0)
-  target.splice(0, target.length, ...weights.map((weight) => Math.round((total * weight) / weightTotal)))
-}
-
-function sumByDate(items, key, valueKeys) {
+function sumByPrefix(items, prefix, valueKeys) {
   return items
-    .filter((item) => (item.created_at || item.fecha || '').startsWith(key))
+    .filter((item) => (item.created_at || item.fecha || '').startsWith(prefix))
     .reduce((sum, item) => sum + Number(valueKeys.map((valueKey) => item[valueKey]).find(Boolean) || 0), 0)
 }
 
-function countOrders(states) {
-  return ordenes.value.filter((orden) => states.some((state) => String(orden.estado || '').toLowerCase().includes(state))).length
+function countOrders(states, list = ordenesPeriodo.value) {
+  return list.filter((orden) => states.some((state) => String(orden.estado || '').toLowerCase().includes(state))).length
 }
 
 function clienteNombre(orden) {
@@ -428,15 +456,13 @@ function formatShortMoney(value) {
 
 onMounted(async () => {
   try {
-    const [dashboardResponse, movimientosResponse, pagosResponse, ordenesResponse, clientesResponse] = await Promise.all([
-      run(() => dashboardApi.get()),
+    const [movimientosResponse, pagosResponse, ordenesResponse, clientesResponse] = await Promise.all([
       run(() => movimientosCajaApi.list()),
       run(() => pagosApi.list()),
       run(() => ordenesApi.list()),
       run(() => clientesApi.list()),
     ])
 
-    Object.assign(metrics, dashboardResponse.data)
     egresos.value = movimientosResponse.data.filter((movimiento) => movimiento.tipo === 'egreso')
     otrosIngresos.value = movimientosResponse.data.filter((movimiento) => movimiento.tipo === 'ingreso')
     pagos.value = pagosResponse.data
