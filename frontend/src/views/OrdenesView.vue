@@ -61,10 +61,7 @@
     <BaseModal v-model="modalOpen" :title="editingId ? 'Editar orden' : 'Nueva orden'" subtitle="Informacion tecnica y financiera del equipo.">
       <form class="grid gap-4" @submit.prevent="saveOrden">
         <div>
-          <BaseInput v-model="form.cliente_id" label="Cliente" type="select" required>
-            <option value="">Selecciona un cliente</option>
-            <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">{{ cliente.nombre || cliente.name || `Cliente ${cliente.id}` }}</option>
-          </BaseInput>
+          <ComboSelect v-model="form.cliente_id" label="Cliente" placeholder="Buscar cliente por nombre..." :options="clienteOptions" required />
           <button
             type="button"
             class="mt-1.5 text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
@@ -150,6 +147,7 @@ import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
 import BaseInput from '../components/BaseInput.vue'
 import BaseModal from '../components/BaseModal.vue'
+import ComboSelect from '../components/ComboSelect.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FabButton from '../components/FabButton.vue'
 import OrderCard from '../components/OrderCard.vue'
@@ -198,6 +196,18 @@ const clientesPorId = computed(() => {
   }
   return map
 })
+
+// Opciones para el buscador de cliente del formulario "Nueva orden".
+// Se recalcula solo cuando cambia la lista de clientes, no en cada
+// letra tipeada dentro del combobox (ese filtro lo hace ComboSelect
+// internamente sobre este arreglo ya armado).
+const clienteOptions = computed(() =>
+  clientes.value.map((cliente) => ({
+    value: cliente.id,
+    label: cliente.nombre || cliente.name || `Cliente ${cliente.id}`,
+    sublabel: cliente.telefono || '',
+  })),
+)
 
 // En creacion, "Saldo pendiente" no se tipea: se deriva de valor - abono
 // para que nunca quede desincronizado del abono que se esta cargando al

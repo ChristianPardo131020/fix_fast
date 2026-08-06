@@ -5,8 +5,8 @@
         <span class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">Egresos</span>
         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">Caja operativa</span>
       </template>
-      Controla arriendos, empleados, servicios, compras, herramientas, transportes y otros gastos del taller. Las ventas
-      y otros ingresos sin factura se registran desde <RouterLink :to="{ name: 'ingresos' }" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Otros ingresos</RouterLink>.
+      Controla arriendos, empleados, servicios, compras, herramientas, transportes y otros gastos del taller. Los pagos
+      de ordenes y otras ventas se registran desde <RouterLink :to="{ name: 'pagos' }" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Ingresos</RouterLink>.
       <template #actions>
         <BaseButton variant="secondary" disabled>Exportar Excel</BaseButton>
         <BaseButton variant="secondary" disabled>Reporte PDF</BaseButton>

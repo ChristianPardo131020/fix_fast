@@ -45,6 +45,8 @@ import {
   Users,
   Wallet,
   Wrench,
+  X,
+  ChevronDown,
 } from '@lucide/vue'
 
 const props = defineProps({
@@ -93,6 +95,8 @@ const icons = {
   landmark: Landmark,
   gauge: Gauge,
   stethoscope: Stethoscope,
+  x: X,
+  'chevron-down': ChevronDown,
 }
 
 const icon = computed(() => icons[props.name] || Clock)

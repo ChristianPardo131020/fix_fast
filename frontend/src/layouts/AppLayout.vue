@@ -161,8 +161,7 @@ const navGroups = [
   {
     label: 'Finanzas',
     items: [
-      { name: 'Pagos', route: 'pagos', icon: 'payments' },
-      { name: 'Otros ingresos', route: 'ingresos', icon: 'trend-up' },
+      { name: 'Ingresos', route: 'pagos', icon: 'payments' },
       { name: 'Egresos', route: 'caja', icon: 'trend-down' },
     ],
   },
@@ -182,7 +181,7 @@ const bottomNavItems = [
   { name: 'Inicio', route: 'dashboard', icon: 'dashboard' },
   { name: 'Ordenes', route: 'ordenes', icon: 'orders' },
   { name: 'Clientes', route: 'clientes', icon: 'users' },
-  { name: 'Ingresos', route: 'ingresos', icon: 'trend-up' },
+  { name: 'Ingresos', route: 'pagos', icon: 'trend-up' },
 ]
 
 // rutas hijas que no tienen su propio item de nav (ej. la ficha de un
