@@ -3,6 +3,16 @@
 @import "@fontsource-variable/jetbrains-mono";
 
 /*
+ * Por defecto Tailwind v4 ata "dark:" a prefers-color-scheme del SO, no
+ * a una clase. El toggle de tema (stores/ui.js: toggleTheme/hydrateTheme)
+ * pone/saca la clase "dark" en <html> segun eleccion del usuario y la
+ * persiste en localStorage — esta variante es lo que hace que TODAS las
+ * utilidades dark: (todas las vistas ya las usan) respondan a esa clase
+ * en vez de al tema del sistema.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
  * Tokens del sistema de diseño (Fase 1 del rediseño).
  * Estrategia: se agregan tonos nuevos sin tocar los que ya usan las
  * vistas todavía no rediseñadas (Pagos, Caja, Configuracion siguen
