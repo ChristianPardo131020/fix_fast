@@ -39,10 +39,10 @@
   <div v-else class="space-y-6">
     <!-- Fila 1: lo mas importante primero -->
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <StatCard label="Equipos en reparacion" :value="formatNumber(enReparacionCount)" icon="wrench" tone="brand" hint="Ingresaron en el periodo seleccionado" />
-      <StatCard label="Listos para entregar" :value="formatNumber(listosCount)" icon="check" tone="green" hint="Ingresaron en el periodo seleccionado" />
+      <StatCard label="Equipos en reparacion" :value="formatNumber(enReparacionCount)" icon="wrench" tone="brand" hint="Trabajos activos en el taller ahora" />
+      <StatCard label="Listos para entregar" :value="formatNumber(listosCount)" icon="check" tone="green" hint="Esperando que el cliente retire" />
       <StatCard label="Ingresos del periodo" :value="formatCurrency(ingresosPeriodo)" icon="payments" tone="brand" :hint="`Pagos y otros ingresos · ${periodLabel}`" />
-      <StatCard label="Saldo pendiente" :value="formatCurrency(saldoPendientePeriodo)" icon="cash" tone="orange" hint="De ordenes ingresadas en el periodo" />
+      <StatCard label="Saldo pendiente" :value="formatCurrency(saldoPendiente)" icon="cash" tone="orange" hint="Cartera por cobrar, todas las ordenes" />
     </section>
 
     <!-- Fila 2: graficos -->
@@ -72,7 +72,7 @@
           <div class="relative h-48 w-48 shrink-0">
             <Doughnut :data="ordersDonutData" :options="donutOptions" />
             <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <span class="text-2xl font-semibold text-slate-950 dark:text-white">{{ formatNumber(ordenesPeriodo.length) }}</span>
+              <span class="text-2xl font-semibold text-slate-950 dark:text-white">{{ formatNumber(ordenes.length) }}</span>
               <span class="text-xs text-slate-400">Total</span>
             </div>
           </div>
@@ -238,11 +238,12 @@ const statusGroups = [
   { key: 'cancelado', label: 'Cancelado', match: ['cancel'], color: '#ef4444' },
 ]
 
-// No hay historico de cambios de estado en el backend (ver comentario mas
-// abajo en timelineEvents de OrdenDetalleView), asi que "estados de
-// ordenes del periodo" se aproxima con las ordenes cuya fecha de INGRESO
-// cae en el periodo elegido, mirando su estado ACTUAL. Es la mejor lectura
-// honesta disponible: "de lo que entro en agosto, como esta hoy".
+// "Ordenes del periodo" (para financiero y actividad reciente) son las
+// que INGRESARON en el mes/año elegido. Esto es distinto del estado
+// EN VIVO del taller (ver orderStatus/enReparacionCount/listosCount mas
+// abajo): un equipo que entro en julio y sigue en reparacion en agosto
+// debe seguir contando como "en reparacion ahora" sin importar que mes
+// mires en el dashboard, por eso esos contadores NO usan este filtro.
 const ordenesPeriodo = computed(() => ordenes.value.filter((orden) => matchesPeriod(orden.fecha_ingreso || orden.created_at)))
 const pagosPeriodo = computed(() => pagos.value.filter((pago) => matchesPeriod(pago.created_at || pago.fecha)))
 const otrosIngresosPeriodo = computed(() => otrosIngresos.value.filter((item) => matchesPeriod(item.created_at)))
@@ -258,9 +259,13 @@ const ingresosPeriodo = computed(() => {
 
 const utilidadNeta = computed(() => ingresosPeriodo.value - totalEgresosPeriodo.value)
 
-const saldoPendientePeriodo = computed(() => ordenesPeriodo.value.reduce((sum, orden) => sum + Number(orden.saldo || 0), 0))
+// Estado EN VIVO del taller: cuenta sobre TODAS las ordenes (no solo las
+// del periodo filtrado), porque "cuantos equipos tengo en reparacion
+// ahora" no depende de en que mes entraron. El filtro de mes/año solo
+// aplica a las metricas financieras y de actividad de arriba/abajo.
+const saldoPendiente = computed(() => ordenes.value.reduce((sum, orden) => sum + Number(orden.saldo || 0), 0))
 
-const orderStatus = computed(() => statusGroups.map((group) => ({ ...group, value: countOrders(group.match) })))
+const orderStatus = computed(() => statusGroups.map((group) => ({ ...group, value: countOrders(group.match, ordenes.value) })))
 const enReparacionCount = computed(() => orderStatus.value.find((item) => item.key === 'reparacion')?.value || 0)
 const listosCount = computed(() => orderStatus.value.find((item) => item.key === 'listo')?.value || 0)
 
@@ -423,7 +428,7 @@ function sumByPrefix(items, prefix, valueKeys) {
     .reduce((sum, item) => sum + Number(valueKeys.map((valueKey) => item[valueKey]).find(Boolean) || 0), 0)
 }
 
-function countOrders(states, list = ordenesPeriodo.value) {
+function countOrders(states, list) {
   return list.filter((orden) => states.some((state) => String(orden.estado || '').toLowerCase().includes(state))).length
 }
 
