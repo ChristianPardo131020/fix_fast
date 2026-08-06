@@ -39,8 +39,8 @@
   <div v-else class="space-y-6">
     <!-- Fila 1: lo mas importante primero -->
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <StatCard label="Equipos en reparacion" :value="formatNumber(enReparacionCount)" icon="wrench" tone="brand" hint="Trabajos activos en el taller ahora" />
-      <StatCard label="Listos para entregar" :value="formatNumber(listosCount)" icon="check" tone="green" hint="Esperando que el cliente retire" />
+      <StatCard label="Pendientes" :value="formatNumber(pendientesCount)" icon="clock" tone="slate" hint="Equipos por iniciar reparacion" />
+      <StatCard label="Entregadas" :value="formatNumber(entregadasCount)" icon="check" tone="purple" hint="Ordenes ya retiradas por el cliente" />
       <StatCard label="Ingresos del periodo" :value="formatCurrency(ingresosPeriodo)" icon="payments" tone="brand" :hint="`Pagos y otros ingresos · ${periodLabel}`" />
       <StatCard label="Saldo pendiente" :value="formatCurrency(saldoPendiente)" icon="cash" tone="orange" hint="Cartera por cobrar, todas las ordenes" />
     </section>
@@ -240,7 +240,7 @@ const statusGroups = [
 
 // "Ordenes del periodo" (para financiero y actividad reciente) son las
 // que INGRESARON en el mes/año elegido. Esto es distinto del estado
-// EN VIVO del taller (ver orderStatus/enReparacionCount/listosCount mas
+// EN VIVO del taller (ver orderStatus/pendientesCount/entregadasCount mas
 // abajo): un equipo que entro en julio y sigue en reparacion en agosto
 // debe seguir contando como "en reparacion ahora" sin importar que mes
 // mires en el dashboard, por eso esos contadores NO usan este filtro.
@@ -266,8 +266,8 @@ const utilidadNeta = computed(() => ingresosPeriodo.value - totalEgresosPeriodo.
 const saldoPendiente = computed(() => ordenes.value.reduce((sum, orden) => sum + Number(orden.saldo || 0), 0))
 
 const orderStatus = computed(() => statusGroups.map((group) => ({ ...group, value: countOrders(group.match, ordenes.value) })))
-const enReparacionCount = computed(() => orderStatus.value.find((item) => item.key === 'reparacion')?.value || 0)
-const listosCount = computed(() => orderStatus.value.find((item) => item.key === 'listo')?.value || 0)
+const pendientesCount = computed(() => orderStatus.value.find((item) => item.key === 'pendiente')?.value || 0)
+const entregadasCount = computed(() => orderStatus.value.find((item) => item.key === 'entregado')?.value || 0)
 
 // Cliente no tiene columna created_at en el backend (ver models/cliente.py).
 // Se aproxima "nuevo" con el id descendente: los clientes solo se crean,
