@@ -153,6 +153,17 @@
         </div>
       </section>
     </div>
+
+    <BaseCard v-else content-class="p-8">
+      <EmptyState
+        icon="alert"
+        title="No se pudo cargar el dashboard"
+        :description="loadError || 'Intenta de nuevo en unos segundos.'"
+      />
+      <div class="mt-4 flex justify-center">
+        <BaseButton variant="secondary" @click="loadDashboard">Reintentar</BaseButton>
+      </div>
+    </BaseCard>
   </div>
 </template>
 
@@ -163,6 +174,9 @@ import CashflowChart from '../components/dashboard/CashflowChart.vue'
 import FinancialFlowPanel from '../components/dashboard/FinancialFlowPanel.vue'
 import OrdersStatusPanel from '../components/dashboard/OrdersStatusPanel.vue'
 import PaymentMethodsPanel from '../components/dashboard/PaymentMethodsPanel.vue'
+import BaseButton from '../components/BaseButton.vue'
+import BaseCard from '../components/BaseCard.vue'
+import EmptyState from '../components/EmptyState.vue'
 import PageHeader from '../components/PageHeader.vue'
 import StatCard from '../components/StatCard.vue'
 import { dashboardApi } from '../api/resources'
@@ -190,6 +204,7 @@ const availableYears = computed(() => {
 
 const dashboard = ref(null)
 const loading = ref(true)
+const loadError = ref('')
 
 const periodo = computed(() => dashboard.value?.periodo || { label: '' })
 
@@ -203,14 +218,27 @@ const granularityTouchedByUser = ref(false)
 
 async function loadDashboard() {
   loading.value = true
+  loadError.value = ''
   try {
     const response = await run(() => dashboardApi.get({
       year: selectedYear.value,
       month: selectedMonth.value,
       chart_granularity: granularityTouchedByUser.value ? chartGranularity.value : null,
     }))
+
+    // Chequeo de forma antes de asignar: si la respuesta no trae lo que
+    // se espera (backend caido a mitad de un deploy, proxy devolviendo
+    // otra cosa, etc.) se trata como error en vez de dejar que un
+    // "undefined.algo" reviente el render mas abajo.
+    if (!response.data?.kpis || !response.data?.cashflow) {
+      throw new Error('La respuesta del servidor no tiene el formato esperado.')
+    }
+
     dashboard.value = response.data
     chartGranularity.value = response.data.cashflow.granularidad
+  } catch (err) {
+    dashboard.value = null
+    loadError.value = err.response?.data?.detail || err.message || 'No se pudo cargar el dashboard.'
   } finally {
     loading.value = false
   }
