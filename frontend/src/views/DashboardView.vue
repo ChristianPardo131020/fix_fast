@@ -39,11 +39,11 @@
   <div v-else class="space-y-6">
     <!-- Fila 1: lo mas importante primero -->
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-      <StatCard label="Pendientes" :value="formatNumber(pendientesCount)" icon="clock" tone="slate" hint="Equipos por iniciar reparacion" />
-      <StatCard label="Listo para entregar" :value="formatNumber(listosCount)" icon="check" tone="green" hint="Esperando que el cliente retire" />
-      <StatCard label="Entregadas" :value="formatNumber(entregadasCount)" icon="check" tone="purple" hint="Ordenes ya retiradas por el cliente" />
+      <StatCard label="Pendientes" :value="formatNumber(pendientesCount)" icon="clock" tone="slate" :hint="`Ingresaron en ${periodLabel}`" />
+      <StatCard label="Listo para entregar" :value="formatNumber(listosCount)" icon="check" tone="green" :hint="`Ingresaron en ${periodLabel}`" />
+      <StatCard label="Entregadas" :value="formatNumber(entregadasCount)" icon="check" tone="purple" :hint="`Ingresaron en ${periodLabel}`" />
       <StatCard label="Ingresos del periodo" :value="formatCurrency(ingresosPeriodo)" icon="payments" tone="brand" :hint="`Pagos y otros ingresos · ${periodLabel}`" />
-      <StatCard label="Saldo pendiente" :value="formatCurrency(saldoPendiente)" icon="cash" tone="orange" hint="Cartera por cobrar, todas las ordenes" />
+      <StatCard label="Saldo pendiente" :value="formatCurrency(saldoPendientePeriodo)" icon="cash" tone="orange" :hint="`De ordenes ingresadas en ${periodLabel}`" />
     </section>
 
     <!-- Fila 2: graficos -->
@@ -73,7 +73,7 @@
           <div class="relative h-48 w-48 shrink-0">
             <Doughnut :data="ordersDonutData" :options="donutOptions" />
             <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <span class="text-2xl font-semibold text-slate-950 dark:text-white">{{ formatNumber(ordenes.length) }}</span>
+              <span class="text-2xl font-semibold text-slate-950 dark:text-white">{{ formatNumber(ordenesPeriodo.length) }}</span>
               <span class="text-xs text-slate-400">Total</span>
             </div>
           </div>
@@ -239,12 +239,11 @@ const statusGroups = [
   { key: 'cancelado', label: 'Cancelado', match: ['cancel'], color: '#ef4444' },
 ]
 
-// "Ordenes del periodo" (para financiero y actividad reciente) son las
-// que INGRESARON en el mes/año elegido. Esto es distinto del estado
-// EN VIVO del taller (ver orderStatus/pendientesCount/entregadasCount mas
-// abajo): un equipo que entro en julio y sigue en reparacion en agosto
-// debe seguir contando como "en reparacion ahora" sin importar que mes
-// mires en el dashboard, por eso esos contadores NO usan este filtro.
+// Ordenes que INGRESARON en el mes/año elegido. Todas las tarjetas de
+// arriba (estados, saldo, ingresos), el donut y los widgets de abajo
+// (ultimas ordenes, actividad reciente) se calculan sobre este
+// subconjunto: si el periodo no tuvo ordenes nuevas, van a mostrar 0
+// aunque haya equipos de meses anteriores todavia activos en el taller.
 const ordenesPeriodo = computed(() => ordenes.value.filter((orden) => matchesPeriod(orden.fecha_ingreso || orden.created_at)))
 const pagosPeriodo = computed(() => pagos.value.filter((pago) => matchesPeriod(pago.created_at || pago.fecha)))
 const otrosIngresosPeriodo = computed(() => otrosIngresos.value.filter((item) => matchesPeriod(item.created_at)))
@@ -260,13 +259,9 @@ const ingresosPeriodo = computed(() => {
 
 const utilidadNeta = computed(() => ingresosPeriodo.value - totalEgresosPeriodo.value)
 
-// Estado EN VIVO del taller: cuenta sobre TODAS las ordenes (no solo las
-// del periodo filtrado), porque "cuantos equipos tengo en reparacion
-// ahora" no depende de en que mes entraron. El filtro de mes/año solo
-// aplica a las metricas financieras y de actividad de arriba/abajo.
-const saldoPendiente = computed(() => ordenes.value.reduce((sum, orden) => sum + Number(orden.saldo || 0), 0))
+const saldoPendientePeriodo = computed(() => ordenesPeriodo.value.reduce((sum, orden) => sum + Number(orden.saldo || 0), 0))
 
-const orderStatus = computed(() => statusGroups.map((group) => ({ ...group, value: countOrders(group.match, ordenes.value) })))
+const orderStatus = computed(() => statusGroups.map((group) => ({ ...group, value: countOrders(group.match, ordenesPeriodo.value) })))
 const pendientesCount = computed(() => orderStatus.value.find((item) => item.key === 'pendiente')?.value || 0)
 const listosCount = computed(() => orderStatus.value.find((item) => item.key === 'listo')?.value || 0)
 const entregadasCount = computed(() => orderStatus.value.find((item) => item.key === 'entregado')?.value || 0)
