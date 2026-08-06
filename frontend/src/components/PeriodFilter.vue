@@ -40,6 +40,7 @@
 // si lo hace cada vista sobre sus propias filas -- este componente solo
 // entrega { desde, hasta } en formato YYYY-MM-DD.
 import { computed } from 'vue'
+import { rangoEsteAnio, rangoEsteMes, rangoEstaSemana, rangoHoy } from '../utils/dateRanges'
 
 const props = defineProps({
   modelValue: { type: Object, required: true }, // { desde: 'YYYY-MM-DD'|'', hasta: 'YYYY-MM-DD'|'' }
@@ -47,54 +48,13 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-function toISO(date) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
-function startOfWeek(date) {
-  const d = new Date(date)
-  const day = d.getDay() // 0 = domingo .. 6 = sabado
-  const diff = (day === 0 ? -6 : 1) - day // retrocede hasta el lunes
-  d.setDate(d.getDate() + diff)
-  return d
-}
-
-const presets = computed(() => {
-  const hoy = new Date()
-  return [
-    { key: 'hoy', label: 'Hoy', range: () => ({ desde: toISO(hoy), hasta: toISO(hoy) }) },
-    {
-      key: 'semana',
-      label: 'Esta semana',
-      range: () => {
-        const inicio = startOfWeek(hoy)
-        const fin = new Date(inicio)
-        fin.setDate(inicio.getDate() + 6)
-        return { desde: toISO(inicio), hasta: toISO(fin) }
-      },
-    },
-    {
-      key: 'mes',
-      label: 'Este mes',
-      range: () => ({
-        desde: toISO(new Date(hoy.getFullYear(), hoy.getMonth(), 1)),
-        hasta: toISO(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)),
-      }),
-    },
-    {
-      key: 'anio',
-      label: 'Este año',
-      range: () => ({
-        desde: toISO(new Date(hoy.getFullYear(), 0, 1)),
-        hasta: toISO(new Date(hoy.getFullYear(), 11, 31)),
-      }),
-    },
-    { key: 'todo', label: 'Todo', range: () => ({ desde: '', hasta: '' }) },
-  ]
-})
+const presets = computed(() => [
+  { key: 'hoy', label: 'Hoy', range: rangoHoy },
+  { key: 'semana', label: 'Esta semana', range: rangoEstaSemana },
+  { key: 'mes', label: 'Este mes', range: rangoEsteMes },
+  { key: 'anio', label: 'Este año', range: rangoEsteAnio },
+  { key: 'todo', label: 'Todo', range: () => ({ desde: '', hasta: '' }) },
+])
 
 function isActive(preset) {
   const range = preset.range()

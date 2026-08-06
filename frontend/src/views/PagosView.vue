@@ -164,6 +164,7 @@ import { movimientosCajaApi } from '../api/movimientosCajaApi'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 import { useUiStore } from '../stores/ui'
+import { rangoEsteMes } from '../utils/dateRanges'
 
 const { formatCurrency, formatDate, formatNumber } = useFormatters()
 const { loading, run } = useApiState()
@@ -177,7 +178,10 @@ const ordenes = ref([])
 const modalOpen = ref(false)
 const saving = ref(false)
 const origenTipo = ref('orden')
-const filters = reactive({ search: '', origen: '', desde: '', hasta: '' })
+// Arranca en "Este mes" -- ver la lista completa desde el primer pago
+// registrado (miles de filas) no es lo que se quiere ver por defecto al
+// entrar; el preset "Todo" del filtro sigue disponible para eso.
+const filters = reactive({ search: '', origen: '', ...rangoEsteMes() })
 const form = reactive({ orden_id: '', categoria: 'venta', valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
 
 // Puente entre el objeto { desde, hasta } que espera PeriodFilter y los

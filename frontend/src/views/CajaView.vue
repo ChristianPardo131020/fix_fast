@@ -98,6 +98,7 @@ import { movimientosCajaApi } from '../api/movimientosCajaApi'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 import { useUiStore } from '../stores/ui'
+import { rangoEsteMes } from '../utils/dateRanges'
 
 const { formatCurrency, formatNumber } = useFormatters()
 const { loading, run } = useApiState()
@@ -109,7 +110,10 @@ const movimientos = ref([])
 const modalOpen = ref(false)
 const saving = ref(false)
 const categorias = ['arriendo', 'empleado', 'servicios', 'herramientas', 'transporte', 'compra', 'prestamo', 'otros']
-const filters = reactive({ search: '', categoria: '', desde: '', hasta: '' })
+// Arranca en "Este mes" -- ver la lista completa desde el primer
+// egreso registrado no es lo que se quiere ver por defecto al entrar;
+// el preset "Todo" del filtro sigue disponible para eso.
+const filters = reactive({ search: '', categoria: '', ...rangoEsteMes() })
 
 // Puente entre el objeto { desde, hasta } que espera PeriodFilter y los
 // dos campos sueltos de filters (mas comodos para el resto del archivo).
