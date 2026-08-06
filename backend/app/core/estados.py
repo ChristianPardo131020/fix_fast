@@ -11,8 +11,11 @@ en el frontend (StatusBadge.vue, DashboardView.vue, OrderCard.vue); acá
 vive una sola vez del lado del backend, que es quien calcula los
 agregados del dashboard.
 
-Se agrega "Diagnostico" como estado nuevo entre "Pendiente" y
-"Esperando repuesto" / "En reparacion".
+Vocabulario reducido a proposito (por ahora): "Diagnostico", "Esperando
+repuesto" y "En reparacion" se sacaron del flujo — quedan solo los 4
+estados de mas alto nivel. Si vuelven a hacer falta, se reinsertan aca
+y en el espejo del frontend (frontend/src/constants/estados.js), nada
+mas depende de la lista completa.
 """
 
 from dataclasses import dataclass
@@ -27,9 +30,6 @@ class EstadoDef:
 
 ESTADOS: tuple[EstadoDef, ...] = (
     EstadoDef("pendiente", "Pendiente", "#64748b"),
-    EstadoDef("diagnostico", "Diagnostico", "#0ea5e9"),
-    EstadoDef("esperando_repuesto", "Esperando repuesto", "#f97316"),
-    EstadoDef("reparacion", "En reparacion", "#3b66f5"),
     EstadoDef("listo", "Listo", "#22c55e"),
     EstadoDef("entregado", "Entregado", "#a855f7"),
     EstadoDef("cancelado", "Cancelado", "#ef4444"),
@@ -43,10 +43,7 @@ ESTADOS_POR_KEY = {estado.key: estado for estado in ESTADOS}
 # y "pagado" viene de un bug ya corregido en pago_routes.py que confundia
 # "saldo pagado" con el estado operativo de la orden.
 _ALIASES: dict[str, tuple[str, ...]] = {
-    "pendiente": ("pendiente", "recibido"),
-    "diagnostico": ("diagnostico",),
-    "esperando_repuesto": ("repuesto",),
-    "reparacion": ("reparacion", "proceso"),
+    "pendiente": ("pendiente", "recibido", "diagnostico", "repuesto", "reparacion", "proceso"),
     "listo": ("listo", "reparad"),
     "entregado": ("entreg",),
     "cancelado": ("cancel",),
@@ -54,7 +51,7 @@ _ALIASES: dict[str, tuple[str, ...]] = {
 
 # Estados "abiertos": una orden en cualquiera de estos todavia esta en
 # proceso en el taller (no se fue con el cliente ni se descarto).
-ESTADOS_ABIERTOS: tuple[str, ...] = ("pendiente", "diagnostico", "esperando_repuesto", "reparacion", "listo")
+ESTADOS_ABIERTOS: tuple[str, ...] = ("pendiente", "listo")
 
 
 def resolve_estado_key(raw: str | None) -> str:

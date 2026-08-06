@@ -9,11 +9,12 @@
 // selects de OrdenesView.vue/OrdenDetalleView.vue. Ahora todos importan
 // de aca.
 
+// Vocabulario reducido a proposito (por ahora): "Diagnostico", "Esperando
+// repuesto" y "En reparacion" se sacaron del flujo — quedan solo estos 4
+// estados de mas alto nivel. Si vuelven a hacer falta, se reinsertan aca
+// y en el espejo del backend (backend/app/core/estados.py).
 export const ESTADOS = [
   { key: 'pendiente', label: 'Pendiente', color: '#64748b', icon: 'clock' },
-  { key: 'diagnostico', label: 'Diagnostico', color: '#0ea5e9', icon: 'stethoscope' },
-  { key: 'esperando_repuesto', label: 'Esperando repuesto', color: '#f97316', icon: 'repuesto' },
-  { key: 'reparacion', label: 'En reparacion', color: '#3b66f5', icon: 'wrench' },
   { key: 'listo', label: 'Listo', color: '#22c55e', icon: 'check' },
   { key: 'entregado', label: 'Entregado', color: '#a855f7', icon: 'check' },
   { key: 'cancelado', label: 'Cancelado', color: '#ef4444', icon: 'trash' },
@@ -24,10 +25,7 @@ export const ESTADOS = [
 export const ESTADOS_LABELS = ESTADOS.map((estado) => estado.label)
 
 const ALIASES = {
-  pendiente: ['pendiente', 'recibido'],
-  diagnostico: ['diagnostico'],
-  esperando_repuesto: ['repuesto'],
-  reparacion: ['reparacion', 'proceso'],
+  pendiente: ['pendiente', 'recibido', 'diagnostico', 'repuesto', 'reparacion', 'proceso'],
   listo: ['listo', 'reparad'],
   entregado: ['entreg'],
   cancelado: ['cancel'],

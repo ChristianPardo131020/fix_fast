@@ -194,7 +194,10 @@ def _kpis(db: Session, periodo: Periodo) -> dict:
         "utilidad": _metric(utilidad, utilidad_ant),
         "margen_pct": {"valor": _pct(margen), "variacion_pct": margen_variacion, "tendencia": margen_tendencia},
         "saldo_pendiente": _metric(saldo_pendiente, saldo_pendiente_ant),
-        "equipos_reparacion": _metric_int(estados["reparacion"], estados_ant["reparacion"]),
+        # "reparacion" ya no es un estado propio (vocabulario reducido a
+        # pendiente/listo/entregado/cancelado, ver app/core/estados.py) —
+        # equipos "en reparacion" ahora es lo mismo que "pendiente".
+        "equipos_reparacion": _metric_int(estados["pendiente"], estados_ant["pendiente"]),
         "equipos_listos": _metric_int(estados["listo"], estados_ant["listo"]),
     }, estados
 
