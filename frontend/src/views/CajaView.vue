@@ -60,7 +60,7 @@
     </div>
 
     <BaseCard title="Egresos de caja" subtitle="Gastos operativos y trazabilidad financiera" content-class="p-4">
-      <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_190px_170px]">
+      <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_190px]">
         <label class="relative block">
           <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
           <input v-model="filters.search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar descripcion, metodo o categoria" />
@@ -69,7 +69,9 @@
           <option value="">Todas las categorias</option>
           <option v-for="categoria in categorias" :key="categoria" :value="categoria">{{ categoria }}</option>
         </BaseInput>
-        <BaseInput v-model="filters.fecha" type="date" />
+      </div>
+      <div class="mb-4">
+        <PeriodFilter v-model="periodo" />
       </div>
 
       <FinanceMovementsTable :rows="filteredMovimientos" :loading="loading" @delete="removeMovimiento" />
@@ -90,6 +92,7 @@ import EmptyState from '../components/EmptyState.vue'
 import FinanceMovementsTable from '../components/FinanceMovementsTable.vue'
 import MovimientoCajaModal from '../components/MovimientoCajaModal.vue'
 import PageHeader from '../components/PageHeader.vue'
+import PeriodFilter from '../components/PeriodFilter.vue'
 import StatCard from '../components/StatCard.vue'
 import { movimientosCajaApi } from '../api/movimientosCajaApi'
 import { useApiState } from '../composables/useApiState'
@@ -106,18 +109,30 @@ const movimientos = ref([])
 const modalOpen = ref(false)
 const saving = ref(false)
 const categorias = ['arriendo', 'empleado', 'servicios', 'herramientas', 'transporte', 'compra', 'prestamo', 'otros']
-const filters = reactive({ search: '', categoria: '', fecha: '' })
+const filters = reactive({ search: '', categoria: '', desde: '', hasta: '' })
+
+// Puente entre el objeto { desde, hasta } que espera PeriodFilter y los
+// dos campos sueltos de filters (mas comodos para el resto del archivo).
+const periodo = computed({
+  get: () => ({ desde: filters.desde, hasta: filters.hasta }),
+  set: (value) => { filters.desde = value.desde; filters.hasta = value.hasta },
+})
 
 const filteredMovimientos = computed(() => {
   const term = filters.search.toLowerCase().trim()
 
   return movimientos.value.filter((movimiento) => {
-    const matchesSearch = !term || JSON.stringify(movimiento).toLowerCase().includes(term)
+    const matchesSearch = !term || (
+      movimiento.descripcion?.toLowerCase().includes(term)
+      || movimiento.metodo_pago?.toLowerCase().includes(term)
+      || movimiento.categoria?.toLowerCase().includes(term)
+    )
     const matchesTipo = movimiento.tipo === 'egreso'
     const matchesCategoria = !filters.categoria || movimiento.categoria === filters.categoria
-    const matchesFecha = !filters.fecha || movimiento.created_at?.startsWith(filters.fecha)
+    const fechaCorta = movimiento.created_at?.slice(0, 10)
+    const matchesPeriodo = (!filters.desde || fechaCorta >= filters.desde) && (!filters.hasta || fechaCorta <= filters.hasta)
 
-    return matchesSearch && matchesTipo && matchesCategoria && matchesFecha
+    return matchesSearch && matchesTipo && matchesCategoria && matchesPeriodo
   })
 })
 

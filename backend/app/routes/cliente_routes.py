@@ -60,6 +60,34 @@ def obtener_cliente(
 
     return cliente
 
+# actualizar cliente
+@router.put("/{cliente_id}",
+            response_model=ClienteResponse)
+
+def actualizar_cliente(
+    cliente_id: int,
+    datos: ClienteCreate,
+    db: Session = Depends(get_db)
+):
+    cliente = db.query(Cliente).filter(
+        Cliente.id == cliente_id
+    ).first()
+
+    if not cliente:
+        raise HTTPException(
+            status_code=404,
+            detail="Cliente no encontrado"
+        )
+
+    for key, value in datos.dict().items():
+        setattr(cliente, key, value)
+
+    db.commit()
+
+    db.refresh(cliente)
+
+    return cliente
+
 # eliminar cliente
 @router.delete("/{cliente_id}")
 

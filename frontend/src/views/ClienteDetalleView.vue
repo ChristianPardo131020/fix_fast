@@ -8,20 +8,23 @@
     </BaseCard>
 
     <template v-else>
-      <div class="flex items-center gap-4">
-        <button type="button" class="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900" title="Volver" @click="router.push({ name: 'clientes' })">
-          <AppIcon name="chevron-left" />
-        </button>
-        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-          {{ initials }}
-        </div>
-        <div class="min-w-0">
-          <div class="flex flex-wrap items-center gap-2">
-            <h1 class="truncate text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">{{ cliente?.nombre || 'Cliente' }}</h1>
-            <span class="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">CLI-{{ cliente?.id }}</span>
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="flex min-w-0 items-start gap-4">
+          <button type="button" class="mt-1 shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900" title="Volver" @click="router.push({ name: 'clientes' })">
+            <AppIcon name="chevron-left" />
+          </button>
+          <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+            {{ initials }}
           </div>
-          <p class="truncate text-sm text-slate-500 dark:text-slate-400">{{ cliente?.telefono || 'Sin telefono' }} · {{ cliente?.direccion || 'Sin direccion' }}</p>
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <h1 class="truncate text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">{{ cliente?.nombre || 'Cliente' }}</h1>
+              <span class="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">CLI-{{ cliente?.id }}</span>
+            </div>
+            <p class="truncate text-sm text-slate-500 dark:text-slate-400">{{ cliente?.telefono || 'Sin telefono' }} · {{ cliente?.direccion || 'Sin direccion' }}</p>
+          </div>
         </div>
+        <BaseButton variant="secondary" size="sm" icon="edit" class="shrink-0" @click="router.push({ name: 'clientes', query: { editar: cliente?.id } })">Editar</BaseButton>
       </div>
 
       <section class="grid gap-4 sm:grid-cols-3">

@@ -17,6 +17,7 @@ export const clientesApi = {
   list: () => http.get('/clientes/'),
   create: (payload) => http.post('/clientes/', payload),
   get: (id) => http.get(`/clientes/${id}`),
+  update: (id, payload) => http.put(`/clientes/${id}`, payload),
   remove: (id) => http.delete(`/clientes/${id}`),
 }
 
