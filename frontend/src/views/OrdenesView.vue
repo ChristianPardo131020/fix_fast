@@ -186,6 +186,19 @@ const newCliente = reactive({ nombre: '', telefono: '' })
 
 const form = reactive({ cliente_id: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0, abono: 0, abono_metodo_pago: 'Efectivo' })
 
+// Mapa id->cliente, se recalcula solo cuando cambia la lista de
+// clientes (no en cada letra tipeada). Con ~2300 clientes y ~3500
+// ordenes, clienteNombre() buscando con .find() adentro del filtro de
+// busqueda hacia hasta ~8 millones de comparaciones por tecla -- de ahi
+// la demora. Con el Map la busqueda de cada orden es O(1).
+const clientesPorId = computed(() => {
+  const map = new Map()
+  for (const cliente of clientes.value) {
+    map.set(Number(cliente.id), cliente)
+  }
+  return map
+})
+
 // En creacion, "Saldo pendiente" no se tipea: se deriva de valor - abono
 // para que nunca quede desincronizado del abono que se esta cargando al
 // lado. En edicion se deja tal cual estaba (campo editable normal), ya
@@ -204,7 +217,15 @@ const pagoForm = reactive({ valor: 0, metodo_pago: 'Efectivo', referencia_pago: 
 const filteredOrdenes = computed(() => {
   const term = search.value.toLowerCase().trim()
   return ordenes.value.filter((orden) => {
-    const matchesSearch = !term || JSON.stringify(orden).toLowerCase().includes(term) || clienteNombre(orden).toLowerCase().includes(term)
+    const matchesSearch = !term || (
+      orden.equipo?.toLowerCase().includes(term)
+      || orden.marca?.toLowerCase().includes(term)
+      || orden.modelo?.toLowerCase().includes(term)
+      || orden.problema?.toLowerCase().includes(term)
+      || orden.estado?.toLowerCase().includes(term)
+      || orden.numero_orden?.toLowerCase().includes(term)
+      || clienteNombre(orden).toLowerCase().includes(term)
+    )
     const matchesStatus = !statusFilter.value || orden.estado === statusFilter.value
     return matchesSearch && matchesStatus
   })
@@ -226,7 +247,7 @@ watch(filteredOrdenes, () => {
 
 function clienteNombre(orden) {
   if (orden.cliente?.nombre) return orden.cliente.nombre
-  const cliente = clientes.value.find((item) => Number(item.id) === Number(orden.cliente_id))
+  const cliente = clientesPorId.value.get(Number(orden.cliente_id))
   return cliente?.nombre || cliente?.name || orden.cliente_nombre || `Cliente ${orden.cliente_id || '-'}`
 }
 

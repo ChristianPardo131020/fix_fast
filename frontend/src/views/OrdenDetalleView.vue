@@ -8,9 +8,9 @@
     </BaseCard>
 
     <template v-else-if="orden">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div class="flex items-start gap-4">
-          <button type="button" class="mt-1 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900" title="Volver" @click="router.push({ name: 'ordenes' })">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="flex min-w-0 items-start gap-4">
+          <button type="button" class="mt-1 shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900" title="Volver" @click="router.push({ name: 'ordenes' })">
             <AppIcon name="chevron-left" />
           </button>
           <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
@@ -18,12 +18,13 @@
           </div>
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
-              <h1 class="truncate text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
-                <span class="font-mono text-slate-400">ORD-{{ orden.id }}</span> · {{ orden.equipo || 'Equipo' }}
-              </h1>
+              <span class="font-mono text-sm text-slate-400">ORD-{{ orden.id }}</span>
               <StatusBadge :value="orden.estado" />
             </div>
-            <p class="truncate text-sm text-slate-500 dark:text-slate-400">
+            <h1 class="mt-0.5 break-words text-xl font-semibold leading-snug tracking-tight text-slate-950 dark:text-white">
+              {{ orden.equipo || 'Equipo' }}
+            </h1>
+            <p class="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
               <RouterLink v-if="orden.cliente_id" :to="{ name: 'cliente-detalle', params: { id: orden.cliente_id } }" class="hover:underline">{{ clienteNombre }}</RouterLink>
               <span v-else>{{ clienteNombre }}</span>
               · {{ orden.marca || 'Sin marca' }}{{ orden.modelo ? ` ${orden.modelo}` : '' }}
@@ -31,7 +32,7 @@
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
           <BaseButton variant="secondary" size="sm" icon="edit" @click="openEdit">Editar</BaseButton>
           <BaseButton variant="secondary" size="sm" icon="payments" @click="openPago">Registrar pago</BaseButton>
           <BaseButton variant="ghost" size="sm" icon="refresh" @click="abrirCambioEstado">Cambiar estado</BaseButton>
@@ -66,12 +67,9 @@
       </div>
 
       <!-- Resumen -->
-      <section v-if="activeTab === 'resumen'" class="grid gap-6 lg:grid-cols-2">
+      <section v-if="activeTab === 'resumen'">
         <BaseCard title="Falla reportada" subtitle="Descripcion entregada por el cliente">
           <p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ orden.problema || 'Sin descripcion' }}</p>
-        </BaseCard>
-        <BaseCard title="Diagnostico tecnico" subtitle="Notas del taller sobre el equipo">
-          <p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ orden.diagnostico || 'Sin diagnostico aun' }}</p>
         </BaseCard>
       </section>
 
@@ -127,7 +125,6 @@
           <BaseInput v-model="editForm.modelo" label="Modelo" />
         </div>
         <BaseInput v-model="editForm.problema" label="Falla reportada" textarea required />
-        <BaseInput v-model="editForm.diagnostico" label="Diagnostico tecnico" textarea />
         <div class="grid gap-4 sm:grid-cols-3">
           <BaseInput v-model="editForm.estado" label="Estado" type="select">
             <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
