@@ -92,7 +92,23 @@
             <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
           </BaseInput>
           <BaseInput v-model="form.valor" label="Valor total" type="number" />
-          <BaseInput v-model="form.saldo" label="Saldo pendiente" type="number" />
+          <BaseInput
+            v-model="saldoDisplay"
+            label="Saldo pendiente"
+            type="number"
+            :disabled="!editingId"
+            :hint="!editingId ? 'Valor total menos abono' : ''"
+          />
+        </div>
+        <div v-if="!editingId" class="grid gap-4 sm:grid-cols-2">
+          <BaseInput v-model="form.abono" label="Abono inicial" type="number" hint="Se registra tambien como pago en Pagos" />
+          <BaseInput v-model="form.abono_metodo_pago" label="Metodo de pago del abono" type="select">
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia</option>
+            <option value="Nequi">Nequi</option>
+            <option value="Daviplata">Daviplata</option>
+            <option value="Tarjeta">Tarjeta</option>
+          </BaseInput>
         </div>
         <div class="flex justify-end gap-2">
           <BaseButton variant="secondary" @click="modalOpen = false">Cancelar</BaseButton>
@@ -163,7 +179,17 @@ const showNewCliente = ref(false)
 const savingCliente = ref(false)
 const newCliente = reactive({ nombre: '', telefono: '' })
 
-const form = reactive({ cliente_id: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0 })
+const form = reactive({ cliente_id: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0, abono: 0, abono_metodo_pago: 'Efectivo' })
+
+// En creacion, "Saldo pendiente" no se tipea: se deriva de valor - abono
+// para que nunca quede desincronizado del abono que se esta cargando al
+// lado. En edicion se deja tal cual estaba (campo editable normal), ya
+// que ahi el abono inicial no aplica -- los pagos posteriores se
+// registran con el flujo de "Registrar pago" existente.
+const saldoDisplay = computed({
+  get: () => (editingId.value ? form.saldo : Math.max(Number(form.valor || 0) - Number(form.abono || 0), 0)),
+  set: (value) => { form.saldo = value },
+})
 
 const pagoModalOpen = ref(false)
 const savingPago = ref(false)
@@ -200,7 +226,7 @@ function clienteNombre(orden) {
 }
 
 function resetForm() {
-  Object.assign(form, { cliente_id: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0 })
+  Object.assign(form, { cliente_id: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0, abono: 0, abono_metodo_pago: 'Efectivo' })
   editingId.value = null
   showNewCliente.value = false
   Object.assign(newCliente, { nombre: '', telefono: '' })
@@ -245,6 +271,8 @@ function openEdit(orden) {
     estado: orden.estado || 'Pendiente',
     valor: orden.valor || 0,
     saldo: orden.saldo || 0,
+    abono: 0,
+    abono_metodo_pago: 'Efectivo',
   })
   modalOpen.value = true
 }
@@ -271,13 +299,37 @@ async function loadData() {
 
 async function saveOrden() {
   saving.value = true
-  const payload = { ...form, cliente_id: Number(form.cliente_id), valor: Number(form.valor || 0), saldo: Number(form.saldo || 0) }
+  const valorNum = Number(form.valor || 0)
+  const abonoNum = editingId.value ? 0 : Number(form.abono || 0)
+  // El backend no conoce "abono" (no es un campo de Orden) -- solo se usa
+  // aca para mostrar el saldo previsto y, despues de crear la orden,
+  // para registrar el pago correspondiente.
+  const { abono, abono_metodo_pago, ...ordenFields } = form
+  const payload = {
+    ...ordenFields,
+    cliente_id: Number(form.cliente_id),
+    valor: valorNum,
+    // Al crear, el saldo arranca en el valor total. Si hay abono, se
+    // registra aparte como Pago (mas abajo) y es crear_pago() quien
+    // descuenta el saldo (misma logica que "Registrar pago" en
+    // cualquier otra orden) -- restarlo tambien aca lo descontaria
+    // dos veces.
+    saldo: editingId.value ? Number(form.saldo || 0) : valorNum,
+  }
 
   try {
     if (editingId.value) {
       await run(() => ordenesApi.update(editingId.value, payload), 'Orden actualizada')
     } else {
-      await run(() => ordenesApi.create(payload), 'Orden creada')
+      const response = await run(() => ordenesApi.create(payload), 'Orden creada')
+      if (abonoNum > 0) {
+        await run(() => pagosApi.create({
+          orden_id: response.data.id,
+          valor: abonoNum,
+          metodo_pago: form.abono_metodo_pago || 'Efectivo',
+          observaciones: 'Abono inicial al crear la orden',
+        }), 'Abono registrado')
+      }
     }
     modalOpen.value = false
     await loadData()
