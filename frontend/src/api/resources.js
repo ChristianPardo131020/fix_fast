@@ -7,26 +7,33 @@ export const dashboardApi = {
   get: (params) => http.get('/dashboard/', { params }),
 }
 
+// Las rutas de detalle (/{id}) del backend NO llevan barra final -- solo
+// list()/create() la llevan, porque esas si estan definidas como "/" en
+// FastAPI. Pedir "/clientes/5/" contra una ruta "/clientes/{id}" dispara
+// un redirect 307 que en algunos proxies (el de Vite en dev, por
+// ejemplo) resuelve mal el host y devuelve HTML en vez del JSON
+// esperado -- de ahi que el detalle de una orden se viera vacio.
 export const clientesApi = {
   list: () => http.get('/clientes/'),
   create: (payload) => http.post('/clientes/', payload),
-  get: (id) => http.get(`/clientes/${id}/`),
-  remove: (id) => http.delete(`/clientes/${id}/`),
+  get: (id) => http.get(`/clientes/${id}`),
+  remove: (id) => http.delete(`/clientes/${id}`),
 }
 
 export const ordenesApi = {
   list: () => http.get('/ordenes/'),
   create: (payload) => http.post('/ordenes/', payload),
-  get: (id) => http.get(`/ordenes/${id}/`),
-  update: (id, payload) => http.put(`/ordenes/${id}/`, payload),
-  remove: (id) => http.delete(`/ordenes/${id}/`),
+  get: (id) => http.get(`/ordenes/${id}`),
+  update: (id, payload) => http.put(`/ordenes/${id}`, payload),
+  remove: (id) => http.delete(`/ordenes/${id}`),
+  historial: (id) => http.get(`/ordenes/${id}/historial`),
 }
 
 export const pagosApi = {
   list: () => http.get('/pagos/'),
   create: (payload) => http.post('/pagos/', payload),
-  get: (id) => http.get(`/pagos/${id}/`),
-  remove: (id) => http.delete(`/pagos/${id}/`),
+  get: (id) => http.get(`/pagos/${id}`),
+  remove: (id) => http.delete(`/pagos/${id}`),
 }
 
 // Sin auth: lo consulta el cliente final desde /seguimiento.

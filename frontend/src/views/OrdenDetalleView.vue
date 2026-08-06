@@ -179,7 +179,7 @@ import StatCard from '../components/StatCard.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { clientesApi, ordenesApi, pagosApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
-import { ESTADOS_LABELS } from '../constants/estados'
+import { ESTADOS_LABELS, resolveEstado } from '../constants/estados'
 import { useFormatters } from '../composables/useFormatters'
 
 const props = defineProps({
@@ -200,6 +200,7 @@ const tabs = [
 const orden = ref(null)
 const clientes = ref([])
 const pagos = ref([])
+const historialEstados = ref([])
 const notFound = ref(false)
 const activeTab = ref('resumen')
 
@@ -244,10 +245,13 @@ const pagosOrden = computed(() => {
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
 })
 
-// No hay endpoint de historial de estados en el backend (la tabla
-// existe pero nada la llena todavia), asi que la linea de tiempo se
-// arma solo con eventos reales que si tenemos: ingreso, pagos y
-// entrega. Nada inventado.
+// Traza real de la orden: ingreso, pagos (marcando aparte el abono
+// inicial de "Nueva orden") y cada cambio de estado real (pendiente ->
+// listo -> entregado, o cancelado), tomado de historial_estados. Nada
+// inventado -- una orden vieja, cargada antes de este historial existir,
+// simplemente muestra menos eventos.
+const ABONO_INICIAL_MARCA = 'Abono inicial al crear la orden'
+
 const timelineEvents = computed(() => {
   if (!orden.value) return []
   const events = [
@@ -255,16 +259,32 @@ const timelineEvents = computed(() => {
   ]
 
   pagosOrden.value.forEach((pago) => {
+    const esAbonoInicial = pago.observaciones === ABONO_INICIAL_MARCA
     events.push({
       id: `pago-${pago.id}`,
-      label: 'Pago registrado',
+      label: esAbonoInicial ? 'Abono inicial registrado' : 'Pago registrado',
       detail: `${formatCurrency(pago.valor)} · ${pago.metodo_pago || 'Sin metodo'}`,
       date: pago.created_at,
       icon: 'payments',
     })
   })
 
-  if (orden.value.fecha_entrega) {
+  historialEstados.value.forEach((cambio) => {
+    events.push({
+      id: `estado-${cambio.id}`,
+      label: `Cambio de estado: ${cambio.estado_nuevo || '-'}`,
+      detail: cambio.estado_anterior ? `Antes: ${cambio.estado_anterior}` : 'Primer estado registrado',
+      date: cambio.created_at,
+      icon: resolveEstado(cambio.estado_nuevo).icon,
+    })
+  })
+
+  // Fallback para ordenes viejas, importadas antes de que existiera el
+  // historial de estados: si tienen fecha_entrega pero ningun cambio de
+  // estado a "Entregado" en el historial, se agrega igual (dato real,
+  // solo que no vino del flujo de "Cambiar estado").
+  const yaTieneEntregaEnHistorial = historialEstados.value.some((c) => resolveEstado(c.estado_nuevo).key === 'entregado')
+  if (orden.value.fecha_entrega && !yaTieneEntregaEnHistorial) {
     events.push({ id: 'entrega', label: 'Equipo entregado', detail: 'Orden finalizada', date: orden.value.fecha_entrega, icon: 'check' })
   }
 
@@ -281,7 +301,7 @@ async function confirmarEstado() {
   try {
     await run(() => ordenesApi.update(orden.value.id, { ...ordenPayload(orden.value), estado: nuevoEstado.value }), 'Estado actualizado')
     cambiandoEstado.value = false
-    await loadOrden()
+    await Promise.all([loadOrden(), loadHistorial()])
   } finally {
     cambiandoEstadoGuardando.value = false
   }
@@ -356,9 +376,14 @@ async function loadPagos() {
   pagos.value = response.data
 }
 
+async function loadHistorial() {
+  const response = await ordenesApi.historial(props.id)
+  historialEstados.value = response.data
+}
+
 onMounted(async () => {
   try {
-    const [, clientesResponse] = await Promise.all([loadOrden(), run(() => clientesApi.list()), loadPagos()])
+    const [, clientesResponse] = await Promise.all([loadOrden(), run(() => clientesApi.list()), loadPagos(), loadHistorial()])
     clientes.value = clientesResponse.data
   } catch {
     notFound.value = true

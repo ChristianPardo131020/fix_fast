@@ -169,7 +169,12 @@ const clientes = ref([])
 // Precargado con ?q= cuando se llega desde el buscador global del topbar
 // (ver AppLayout.vue submitSearch).
 const search = ref(typeof route.query.q === 'string' ? route.query.q : '')
-const statusFilter = ref('')
+// Por defecto se ve solo lo que falta atender; "Todos los estados" sigue
+// disponible en el select para el que quiera ver el historial completo.
+// Si se llega con una busqueda global (?q=), no se limita a Pendiente:
+// el buscador del topbar espera encontrar cualquier orden, no solo las
+// pendientes.
+const statusFilter = ref(search.value ? '' : 'Pendiente')
 const modalOpen = ref(false)
 const saving = ref(false)
 const editingId = ref(null)

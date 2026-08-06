@@ -4,11 +4,13 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.historial_estado import HistorialEstado
 from app.models.orden import Orden
+from app.models.pago import Pago
 from app.models.usuario import Usuario
 from app.schemas.orden_schema import (
     OrdenCreate,
     OrdenResponse
 )
+from app.schemas.historial_estado_schema import HistorialEstadoResponse
 from app.auth.dependencies import get_current_user
 
 router = APIRouter(
@@ -73,6 +75,31 @@ def obtener_orden(
 
     return orden
 
+# historial de estados de una orden (traza: cuando cambio de pendiente a
+# listo, a entregado, etc. -- se llena solo, ver actualizar_orden)
+@router.get("/{orden_id}/historial", response_model=list[HistorialEstadoResponse])
+
+def historial_orden(
+    orden_id: int,
+    db: Session = Depends(get_db)
+):
+    orden = db.query(Orden).filter(
+        Orden.id == orden_id
+    ).first()
+
+    if not orden:
+        raise HTTPException(
+            status_code=404,
+            detail="Orden no encontrada"
+        )
+
+    return (
+        db.query(HistorialEstado)
+        .filter(HistorialEstado.orden_id == orden_id)
+        .order_by(HistorialEstado.created_at.asc())
+        .all()
+    )
+
 # actualizar orden
 @router.put("/{orden_id}",
             response_model=OrdenResponse)
@@ -134,6 +161,14 @@ def eliminar_orden(
             status_code=404,
             detail="Orden no encontrada"
         )
+
+    # pagos e historial_estados apuntan a esta orden por foreign key sin
+    # CASCADE -- borrar la orden directamente violaba esa FK y tiraba un
+    # 500 en cualquier orden que ya tuviera un pago o un cambio de
+    # estado registrado (con la traza nueva, eso ya es casi cualquier
+    # orden). Se borran primero, en la misma transaccion.
+    db.query(Pago).filter(Pago.orden_id == orden_id).delete()
+    db.query(HistorialEstado).filter(HistorialEstado.orden_id == orden_id).delete()
 
     db.delete(orden)
 
