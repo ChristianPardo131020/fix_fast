@@ -319,5 +319,23 @@ async function cambiarEstado({ orden, estado }) {
   await loadData()
 }
 
-onMounted(loadData)
+onMounted(async () => {
+  // loadData ya reporta sus propios errores (toast, via useApiState) y
+  // relanza — se atrapa aca para que una carga fallida no le tape el
+  // acceso rapido de abajo al usuario.
+  try {
+    await loadData()
+  } catch {
+    // noop, ya notificado
+  }
+  // Acceso rapido desde el Dashboard: /ordenes?crear=1 abre el modal
+  // de "Nueva orden" directo, sin que el usuario tenga que buscar el
+  // boton. Se limpia el query despues para que un refresh/atras no lo
+  // vuelva a abrir solo.
+  if (route.query.crear === '1') {
+    openCreate()
+    const { crear, ...rest } = route.query
+    router.replace({ query: rest })
+  }
+})
 </script>

@@ -20,6 +20,17 @@
       </template>
     </PageHeader>
 
+    <!-- Acciones rapidas: llevan a la vista correspondiente con el modal
+         de creacion ya abierto (?crear=1), en vez de duplicar los 3
+         formularios aca. Siempre visibles, no dependen de que el
+         dashboard haya cargado. -->
+    <section class="flex flex-wrap items-center gap-3">
+      <span class="w-full text-xs font-semibold uppercase tracking-wide text-slate-400 sm:w-auto">Acciones rapidas</span>
+      <BaseButton icon="orders" @click="router.push({ name: 'ordenes', query: { crear: '1' } })">Nueva orden</BaseButton>
+      <BaseButton variant="secondary" icon="payments" @click="router.push({ name: 'pagos', query: { crear: '1' } })">Registrar pago</BaseButton>
+      <BaseButton variant="secondary" icon="trend-down" @click="router.push({ name: 'caja', query: { crear: '1' } })">Nuevo egreso</BaseButton>
+    </section>
+
     <div v-if="loading" class="space-y-6">
       <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <div v-for="n in 5" :key="n" class="animate-pulse rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
@@ -169,6 +180,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AlertsPanel from '../components/dashboard/AlertsPanel.vue'
 import CashflowChart from '../components/dashboard/CashflowChart.vue'
 import FinancialFlowPanel from '../components/dashboard/FinancialFlowPanel.vue'
@@ -185,6 +197,7 @@ import { useFormatters } from '../composables/useFormatters'
 
 const { formatCurrency, formatNumber } = useFormatters()
 const { run } = useApiState()
+const router = useRouter()
 
 const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 

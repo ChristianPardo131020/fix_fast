@@ -66,6 +66,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
@@ -83,6 +84,8 @@ import { useUiStore } from '../stores/ui'
 const { formatCurrency, formatDate, formatNumber } = useFormatters()
 const { loading, run } = useApiState()
 const ui = useUiStore()
+const route = useRoute()
+const router = useRouter()
 const pagos = ref([])
 const ordenes = ref([])
 const search = ref('')
@@ -139,5 +142,19 @@ async function removePago(pago) {
   await loadData()
 }
 
-onMounted(loadData)
+onMounted(async () => {
+  try {
+    await loadData()
+  } catch {
+    // noop, ya notificado por useApiState
+  }
+  // Acceso rapido desde el Dashboard: /pagos?crear=1 abre el modal de
+  // "Registrar ingreso" directo. Se limpia el query despues para que un
+  // refresh/atras no lo vuelva a abrir solo.
+  if (route.query.crear === '1') {
+    openCreate()
+    const { crear, ...rest } = route.query
+    router.replace({ query: rest })
+  }
+})
 </script>

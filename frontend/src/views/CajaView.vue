@@ -81,6 +81,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
@@ -98,6 +99,8 @@ import { useUiStore } from '../stores/ui'
 const { formatCurrency, formatNumber } = useFormatters()
 const { loading, run } = useApiState()
 const ui = useUiStore()
+const route = useRoute()
+const router = useRouter()
 
 const movimientos = ref([])
 const modalOpen = ref(false)
@@ -202,5 +205,19 @@ async function removeMovimiento(movimiento) {
   await loadMovimientos()
 }
 
-onMounted(loadMovimientos)
+onMounted(async () => {
+  try {
+    await loadMovimientos()
+  } catch {
+    // noop, ya notificado por useApiState
+  }
+  // Acceso rapido desde el Dashboard: /caja?crear=1 abre el modal de
+  // "Nuevo egreso" directo. Se limpia el query despues para que un
+  // refresh/atras no lo vuelva a abrir solo.
+  if (route.query.crear === '1') {
+    modalOpen.value = true
+    const { crear, ...rest } = route.query
+    router.replace({ query: rest })
+  }
+})
 </script>
