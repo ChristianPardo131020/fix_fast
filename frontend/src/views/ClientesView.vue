@@ -1,14 +1,12 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h2 class="text-xl font-semibold text-slate-950 dark:text-white">Clientes</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400">Base de datos operativa para recepcion y seguimiento.</p>
-      </div>
-      <div class="hidden sm:block">
-        <BaseButton icon="plus" @click="openCreate">Crear cliente</BaseButton>
-      </div>
-    </div>
+    <PageHeader title="Clientes" subtitle="Base de datos operativa para recepcion y seguimiento.">
+      <template #actions>
+        <div class="hidden sm:block">
+          <BaseButton icon="plus" @click="openCreate">Crear cliente</BaseButton>
+        </div>
+      </template>
+    </PageHeader>
 
     <FabButton label="Crear cliente" @click="openCreate" />
 
@@ -16,16 +14,21 @@
       <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <label class="relative block md:w-80">
           <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-          <input v-model="search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por nombre, telefono o email" />
+          <input v-model="search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por nombre, telefono o email" />
         </label>
         <p class="text-sm text-slate-500">{{ filteredClientes.length }} clientes</p>
       </div>
 
       <BaseTable :columns="columns" :rows="filteredClientes" :loading="loading">
         <template #nombre="{ row }">
-          <RouterLink :to="{ name: 'cliente-detalle', params: { id: row.id } }" class="block hover:underline">
-            <p class="font-semibold text-slate-950 dark:text-white">{{ row.nombre || row.name || 'Cliente sin nombre' }}</p>
-            <p class="text-xs text-slate-500">ID {{ row.id }}</p>
+          <RouterLink :to="{ name: 'cliente-detalle', params: { id: row.id } }" class="flex items-center gap-3 hover:underline">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+              {{ initials(row) }}
+            </span>
+            <span class="min-w-0">
+              <p class="truncate font-semibold text-slate-950 dark:text-white">{{ row.nombre || row.name || 'Cliente sin nombre' }}</p>
+              <p class="truncate font-mono text-xs text-slate-500">CLI-{{ row.id }}</p>
+            </span>
           </RouterLink>
         </template>
         <template #telefono="{ row }">{{ row.telefono || row.phone || '-' }}</template>
@@ -68,6 +71,7 @@ import BaseModal from '../components/BaseModal.vue'
 import BaseTable from '../components/BaseTable.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FabButton from '../components/FabButton.vue'
+import PageHeader from '../components/PageHeader.vue'
 import { clientesApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { useUiStore } from '../stores/ui'
@@ -92,6 +96,17 @@ const filteredClientes = computed(() => {
   if (!term) return clientes.value
   return clientes.value.filter((cliente) => JSON.stringify(cliente).toLowerCase().includes(term))
 })
+
+function initials(cliente) {
+  const name = cliente?.nombre || cliente?.name || '?'
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+}
 
 function resetForm() {
   Object.assign(form, { nombre: '', telefono: '', email: '', direccion: '', notas: '' })

@@ -1,22 +1,18 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-      <div>
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">Ingresos</span>
-          <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">Sin factura</span>
+    <PageHeader title="Otros ingresos">
+      <template #eyebrow>
+        <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">Ingresos</span>
+        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">Sin factura</span>
+      </template>
+      Ventas de mostrador y otros ingresos que no requieren factura ni datos del cliente: pilas, accesorios, servicios rapidos.
+      Los pagos de ordenes con factura se registran desde <RouterLink :to="{ name: 'pagos' }" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Pagos</RouterLink>.
+      <template #actions>
+        <div class="hidden sm:block">
+          <BaseButton icon="plus" @click="modalOpen = true">Nuevo ingreso</BaseButton>
         </div>
-        <h2 class="mt-3 text-2xl font-semibold text-slate-950 dark:text-white">Otros ingresos</h2>
-        <p class="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-          Ventas de mostrador y otros ingresos que no requieren factura ni datos del cliente: pilas, accesorios, servicios rapidos.
-          Los pagos de ordenes con factura se registran desde <RouterLink :to="{ name: 'pagos' }" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Pagos</RouterLink>.
-        </p>
-      </div>
-
-      <div class="hidden flex-wrap gap-2 sm:flex">
-        <BaseButton icon="plus" @click="modalOpen = true">Nuevo ingreso</BaseButton>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <FabButton label="Nuevo ingreso" @click="modalOpen = true" />
 
@@ -63,7 +59,7 @@
       <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_190px_170px]">
         <label class="relative block">
           <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-          <input v-model="filters.search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar descripcion, metodo o categoria" />
+          <input v-model="filters.search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar descripcion, metodo o categoria" />
         </label>
         <BaseInput v-model="filters.categoria" type="select">
           <option value="">Todas las categorias</option>
@@ -89,6 +85,7 @@ import EmptyState from '../components/EmptyState.vue'
 import FabButton from '../components/FabButton.vue'
 import FinanceMovementsTable from '../components/FinanceMovementsTable.vue'
 import MovimientoCajaModal from '../components/MovimientoCajaModal.vue'
+import PageHeader from '../components/PageHeader.vue'
 import StatCard from '../components/StatCard.vue'
 import { movimientosCajaApi } from '../api/movimientosCajaApi'
 import { useApiState } from '../composables/useApiState'

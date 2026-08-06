@@ -1,5 +1,6 @@
 @import "tailwindcss";
-@import "@fontsource-variable/inter";
+@import "@fontsource-variable/instrument-sans";
+@import "@fontsource-variable/jetbrains-mono";
 
 /*
  * Tokens del sistema de diseño (Fase 1 del rediseño).
@@ -42,13 +43,22 @@
 
   --radius-xl: 0.875rem;
   --radius-2xl: 1.25rem;
+
+  /*
+   * Tipografia del sistema de diseño importado de Stitch ("Precision
+   * Core"): Instrument Sans para toda la UI, JetBrains Mono reservado
+   * para IDs/seriales tecnicos (numero de orden, ID de cliente) via la
+   * utilidad font-mono, para darles ese aire "tecnico" a los datos que
+   * identifican un equipo o ticket.
+   */
+  --font-sans: "Instrument Sans Variable", "Instrument Sans", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 :root {
   color-scheme: light;
-  font-family:
-    "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
   background: #f5f7fb;
   color: #172033;
   font-synthesis: none;
@@ -70,7 +80,7 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(20, 184, 166, 0.10), transparent 30rem),
+    radial-gradient(circle at top left, rgba(59, 102, 245, 0.08), transparent 30rem),
     linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
 }
 
@@ -93,7 +103,7 @@ textarea {
 
 .dark body {
   background:
-    radial-gradient(circle at top left, rgba(20, 184, 166, 0.14), transparent 28rem),
+    radial-gradient(circle at top left, rgba(59, 102, 245, 0.12), transparent 28rem),
     linear-gradient(180deg, #0d1117 0%, #111827 100%);
 }
 

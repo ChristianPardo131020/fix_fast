@@ -1,14 +1,12 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h2 class="text-xl font-semibold text-slate-950 dark:text-white">Ordenes</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400">Control tecnico, estados, valores y saldos por reparar.</p>
-      </div>
-      <div class="hidden sm:block">
-        <BaseButton icon="plus" @click="openCreate">Nueva orden</BaseButton>
-      </div>
-    </div>
+    <PageHeader title="Ordenes" subtitle="Control tecnico, estados, valores y saldos por reparar.">
+      <template #actions>
+        <div class="hidden sm:block">
+          <BaseButton icon="plus" @click="openCreate">Nueva orden</BaseButton>
+        </div>
+      </template>
+    </PageHeader>
 
     <FabButton label="Nueva orden" @click="openCreate" />
 
@@ -16,7 +14,7 @@
       <div class="grid gap-3 md:grid-cols-[1fr_220px]">
         <label class="relative block">
           <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-          <input v-model="search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por cliente, equipo, falla o estado" />
+          <input v-model="search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por cliente, equipo, falla o estado" />
         </label>
         <BaseInput v-model="statusFilter" type="select">
           <option value="">Todos los estados</option>
@@ -69,7 +67,7 @@
           </BaseInput>
           <button
             type="button"
-            class="mt-1.5 text-sm font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400"
+            class="mt-1.5 text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
             @click="toggleNewCliente"
           >
             {{ showNewCliente ? 'Cancelar' : '+ El cliente no existe, crearlo' }}
@@ -130,7 +128,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
@@ -139,17 +137,21 @@ import BaseModal from '../components/BaseModal.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FabButton from '../components/FabButton.vue'
 import OrderCard from '../components/OrderCard.vue'
+import PageHeader from '../components/PageHeader.vue'
 import Paginator from '../components/Paginator.vue'
 import { clientesApi, ordenesApi, pagosApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 
+const route = useRoute()
 const router = useRouter()
 const { loading, run } = useApiState()
 const initialLoading = ref(true)
 const ordenes = ref([])
 const clientes = ref([])
-const search = ref('')
+// Precargado con ?q= cuando se llega desde el buscador global del topbar
+// (ver AppLayout.vue submitSearch).
+const search = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const statusFilter = ref('')
 const modalOpen = ref(false)
 const saving = ref(false)

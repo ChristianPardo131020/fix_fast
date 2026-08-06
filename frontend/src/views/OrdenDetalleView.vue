@@ -18,7 +18,9 @@
           </div>
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
-              <h2 class="truncate text-xl font-semibold text-slate-950 dark:text-white">Orden #{{ orden.id }} · {{ orden.equipo || 'Equipo' }}</h2>
+              <h1 class="truncate text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                <span class="font-mono text-slate-400">ORD-{{ orden.id }}</span> · {{ orden.equipo || 'Equipo' }}
+              </h1>
               <StatusBadge :value="orden.estado" />
             </div>
             <p class="truncate text-sm text-slate-500 dark:text-slate-400">

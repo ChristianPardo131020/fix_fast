@@ -64,18 +64,24 @@
     <div v-if="ui.sidebarOpen" class="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" @click="ui.closeSidebar" />
 
     <div class="transition-all duration-200" :class="ui.sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'">
-      <header class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white/85 px-4 backdrop-blur md:px-6 dark:border-slate-800 dark:bg-slate-950/85">
-        <div class="flex items-center gap-3">
-          <button class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden dark:text-slate-300 dark:hover:bg-slate-900" type="button" @click="ui.toggleSidebar">
-            <AppIcon name="menu" />
-          </button>
-          <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ currentSection }}</p>
-            <h1 class="text-lg font-semibold text-slate-950 dark:text-white">{{ currentTitle }}</h1>
-          </div>
-        </div>
+      <header class="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-slate-200 bg-white/85 px-4 backdrop-blur md:px-6 dark:border-slate-800 dark:bg-slate-950/85">
+        <button class="shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden dark:text-slate-300 dark:hover:bg-slate-900" type="button" @click="ui.toggleSidebar">
+          <AppIcon name="menu" />
+        </button>
 
-        <div class="flex items-center gap-2">
+        <form class="hidden max-w-md flex-1 md:block" @submit.prevent="submitSearch">
+          <label class="relative block">
+            <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              v-model="topSearch"
+              type="search"
+              placeholder="Buscar ordenes por cliente, equipo o estado..."
+              class="h-10 w-full rounded-full border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:focus:bg-slate-950"
+            />
+          </label>
+        </form>
+
+        <div class="ml-auto flex items-center gap-2">
           <button class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900" type="button" title="Cambiar tema" @click="ui.toggleTheme">
             <AppIcon :name="ui.darkMode ? 'sun' : 'moon'" />
           </button>
@@ -127,17 +133,19 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import { API_BASE_URL } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
 
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
 const ui = useUiStore()
 const apiUrl = API_BASE_URL
+const topSearch = ref('')
 
 const navGroups = [
   { label: null, items: [{ name: 'Dashboard', route: 'dashboard', icon: 'dashboard' }] },
@@ -162,8 +170,6 @@ const navGroups = [
   },
 ]
 
-const allNavItems = navGroups.flatMap((group) => group.items)
-
 // la bottom nav de mobile solo tiene lugar para las secciones de uso
 // diario en el mostrador; "Ingresos" (ventas rapidas sin factura) le
 // gana el lugar a "Egresos" porque se registra sobre la marcha desde
@@ -187,13 +193,17 @@ function isActive(item) {
   return routeName === item.route
 }
 
-const currentItem = computed(() => {
-  const routeName = childRouteParent[route.name] || route.name
-  return allNavItems.find((item) => item.route === routeName) || allNavItems[0]
-})
-const currentSection = computed(() => navGroups.find((group) => group.items.includes(currentItem.value))?.label || 'General')
-const currentTitle = computed(() => currentItem.value.name)
 const userInitial = computed(() => (auth.user?.name || 'U').charAt(0).toUpperCase())
+
+// Busqueda global del topbar: por ahora solo cubre ordenes (cliente,
+// equipo, estado), que es lo que OrdenesView.vue ya filtra localmente.
+// Navega con el termino en la query y la vista lo toma como valor
+// inicial de su propio buscador.
+function submitSearch() {
+  const term = topSearch.value.trim()
+  if (!term) return
+  router.push({ name: 'ordenes', query: { q: term } })
+}
 
 onMounted(() => ui.hydrateTheme())
 </script>

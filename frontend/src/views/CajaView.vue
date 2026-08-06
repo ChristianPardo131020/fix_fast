@@ -1,24 +1,18 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-      <div>
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">Egresos</span>
-          <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">Caja operativa</span>
-        </div>
-        <h2 class="mt-3 text-2xl font-semibold text-slate-950 dark:text-white">Egresos</h2>
-        <p class="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-          Controla arriendos, empleados, servicios, compras, herramientas, transportes y otros gastos del taller. Las ventas
-          y otros ingresos sin factura se registran desde <RouterLink :to="{ name: 'ingresos' }" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Otros ingresos</RouterLink>.
-        </p>
-      </div>
-
-      <div class="flex flex-wrap gap-2">
+    <PageHeader title="Egresos">
+      <template #eyebrow>
+        <span class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">Egresos</span>
+        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">Caja operativa</span>
+      </template>
+      Controla arriendos, empleados, servicios, compras, herramientas, transportes y otros gastos del taller. Las ventas
+      y otros ingresos sin factura se registran desde <RouterLink :to="{ name: 'ingresos' }" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Otros ingresos</RouterLink>.
+      <template #actions>
         <BaseButton variant="secondary" disabled>Exportar Excel</BaseButton>
         <BaseButton variant="secondary" disabled>Reporte PDF</BaseButton>
         <BaseButton icon="plus" @click="modalOpen = true">Nuevo egreso</BaseButton>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <StatCard label="Total egresos" :value="formatCurrency(summary.egresos)" icon="cash" tone="rose" hint="Gastos y salidas filtradas" />
@@ -69,7 +63,7 @@
       <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_190px_170px]">
         <label class="relative block">
           <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-          <input v-model="filters.search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar descripcion, metodo o categoria" />
+          <input v-model="filters.search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar descripcion, metodo o categoria" />
         </label>
         <BaseInput v-model="filters.categoria" type="select">
           <option value="">Todas las categorias</option>
@@ -94,6 +88,7 @@ import BaseInput from '../components/BaseInput.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FinanceMovementsTable from '../components/FinanceMovementsTable.vue'
 import MovimientoCajaModal from '../components/MovimientoCajaModal.vue'
+import PageHeader from '../components/PageHeader.vue'
 import StatCard from '../components/StatCard.vue'
 import { movimientosCajaApi } from '../api/movimientosCajaApi'
 import { useApiState } from '../composables/useApiState'

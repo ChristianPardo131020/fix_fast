@@ -58,7 +58,7 @@
 
           <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Orden {{ resultado.numero_orden }}</p>
+              <p class="font-mono text-xs font-medium uppercase tracking-wide text-slate-400">Orden {{ resultado.numero_orden }}</p>
               <h2 class="mt-1 text-xl font-semibold text-slate-950 dark:text-white">{{ resultado.equipo || 'Equipo' }}</h2>
               <p class="text-sm text-slate-500 dark:text-slate-400">{{ resultado.marca || 'Sin marca' }}{{ resultado.modelo ? ` · ${resultado.modelo}` : '' }}</p>
             </div>

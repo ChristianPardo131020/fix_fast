@@ -16,7 +16,10 @@
           {{ initials }}
         </div>
         <div class="min-w-0">
-          <h2 class="truncate text-xl font-semibold text-slate-950 dark:text-white">{{ cliente?.nombre || 'Cliente' }}</h2>
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="truncate text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">{{ cliente?.nombre || 'Cliente' }}</h1>
+            <span class="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">CLI-{{ cliente?.id }}</span>
+          </div>
           <p class="truncate text-sm text-slate-500 dark:text-slate-400">{{ cliente?.telefono || 'Sin telefono' }} · {{ cliente?.direccion || 'Sin direccion' }}</p>
         </div>
       </div>
@@ -59,7 +62,7 @@
         <div v-if="ordenesRecientes.length" class="divide-y divide-slate-100 dark:divide-slate-800">
           <div v-for="orden in ordenesRecientes" :key="orden.id" class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
             <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-slate-950 dark:text-white">#{{ orden.id }} · {{ orden.equipo || 'Equipo' }}</p>
+              <p class="truncate text-sm font-semibold text-slate-950 dark:text-white"><span class="font-mono text-slate-400">ORD-{{ orden.id }}</span> · {{ orden.equipo || 'Equipo' }}</p>
               <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ formatDate(orden.fecha_ingreso) }}</p>
             </div>
             <div class="flex shrink-0 items-center gap-3">

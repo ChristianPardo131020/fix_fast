@@ -1,9 +1,6 @@
 <template>
   <div class="space-y-6">
-    <div>
-      <h2 class="text-xl font-semibold text-slate-950 dark:text-white">Configuracion</h2>
-      <p class="text-sm text-slate-500 dark:text-slate-400">Preferencias del frontend y datos de despliegue.</p>
-    </div>
+    <PageHeader title="Configuracion" subtitle="Preferencias del frontend y datos de despliegue." />
 
     <BaseCard title="Conexion API" subtitle="Lista para usar en local o Netlify con variables de entorno.">
       <div class="grid gap-4 md:grid-cols-2">
@@ -40,6 +37,7 @@
 <script setup>
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
+import PageHeader from '../components/PageHeader.vue'
 import { API_BASE_URL } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'

@@ -1,4 +1,14 @@
 <template>
+  <div class="space-y-6">
+    <PageHeader title="Resumen general" subtitle="Esto es lo que esta pasando hoy en tu taller.">
+      <template #actions>
+        <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          <AppIcon name="calendar" class="h-4 w-4" />
+          {{ todayLabel }}
+        </span>
+      </template>
+    </PageHeader>
+
   <div v-if="initialLoading" class="space-y-6">
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <div v-for="n in 4" :key="n" class="animate-pulse rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
@@ -48,8 +58,12 @@
 
       <BaseCard title="Estados de ordenes" subtitle="Distribucion operativa del taller">
         <div class="flex flex-col items-center gap-5 sm:flex-row">
-          <div class="h-48 w-48 shrink-0">
+          <div class="relative h-48 w-48 shrink-0">
             <Doughnut :data="ordersDonutData" :options="donutOptions" />
+            <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <span class="text-2xl font-semibold text-slate-950 dark:text-white">{{ formatNumber(ordenes.length) }}</span>
+              <span class="text-xs text-slate-400">Total</span>
+            </div>
           </div>
           <div class="w-full space-y-2">
             <div v-for="item in orderStatus" :key="item.key" class="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm">
@@ -70,7 +84,7 @@
         <div class="divide-y divide-slate-100 dark:divide-slate-800">
           <div v-for="orden in recentOrders" :key="orden.id" class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
             <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-slate-950 dark:text-white">#{{ orden.id }} · {{ clienteNombre(orden) }}</p>
+              <p class="truncate text-sm font-semibold text-slate-950 dark:text-white"><span class="font-mono text-slate-400">ORD-{{ orden.id }}</span> · {{ clienteNombre(orden) }}</p>
               <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ orden.equipo || orden.modelo || 'Equipo' }}</p>
             </div>
             <StatusBadge :value="orden.estado || 'recibido'" />
@@ -114,6 +128,7 @@
       </BaseCard>
     </section>
   </div>
+  </div>
 </template>
 
 <script setup>
@@ -133,6 +148,7 @@ import { Doughnut, Line } from 'vue-chartjs'
 import AppIcon from '../components/AppIcon.vue'
 import BaseCard from '../components/BaseCard.vue'
 import EmptyState from '../components/EmptyState.vue'
+import PageHeader from '../components/PageHeader.vue'
 import StatCard from '../components/StatCard.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { movimientosCajaApi } from '../api/movimientosCajaApi'
@@ -160,6 +176,11 @@ const otrosIngresos = ref([])
 const pagos = ref([])
 const ordenes = ref([])
 const clientes = ref([])
+
+const todayLabel = computed(() => {
+  const formatted = new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+  return `Hoy, ${formatted}`
+})
 
 const rangeOptions = [
   { label: 'Hoy', value: 'today' },

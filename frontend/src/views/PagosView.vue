@@ -1,12 +1,10 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h2 class="text-xl font-semibold text-slate-950 dark:text-white">Pagos e ingresos</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400">Registro de recaudos y abonos recibidos por ordenes de reparacion.</p>
-      </div>
-      <BaseButton icon="plus" @click="openCreate">Registrar ingreso</BaseButton>
-    </div>
+    <PageHeader title="Pagos e ingresos" subtitle="Registro de recaudos y abonos recibidos por ordenes de reparacion.">
+      <template #actions>
+        <BaseButton icon="plus" @click="openCreate">Registrar ingreso</BaseButton>
+      </template>
+    </PageHeader>
 
     <div class="grid gap-4 md:grid-cols-3">
       <StatCard label="Total ingresos" :value="formatNumber(pagos.length)" icon="payments" tone="teal" />
@@ -18,12 +16,12 @@
       <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <label class="relative block md:w-96">
           <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-          <input v-model="search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por referencia, metodo u orden" />
+          <input v-model="search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por referencia, metodo u orden" />
         </label>
       </div>
 
       <BaseTable :columns="columns" :rows="filteredPagos" :loading="loading">
-        <template #orden_id="{ row }">#{{ row.orden_id || row.orden?.id || '-' }}</template>
+        <template #orden_id="{ row }"><span class="font-mono">ORD-{{ row.orden_id || row.orden?.id || '-' }}</span></template>
         <template #valor="{ row }">{{ formatCurrency(row.valor || row.monto || row.total) }}</template>
         <template #metodo_pago="{ row }">
           <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ row.metodo_pago || row.metodo || 'Sin metodo' }}</span>
@@ -75,6 +73,7 @@ import BaseInput from '../components/BaseInput.vue'
 import BaseModal from '../components/BaseModal.vue'
 import BaseTable from '../components/BaseTable.vue'
 import EmptyState from '../components/EmptyState.vue'
+import PageHeader from '../components/PageHeader.vue'
 import StatCard from '../components/StatCard.vue'
 import { ordenesApi, pagosApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'

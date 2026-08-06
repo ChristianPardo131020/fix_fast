@@ -1,8 +1,12 @@
 <template>
-  <BaseCard content-class="p-4" class="flex flex-col transition hover:-translate-y-0.5 hover:shadow-lift">
-    <div class="flex items-start justify-between gap-2">
+  <BaseCard
+    content-class="p-4"
+    class="flex flex-col transition hover:-translate-y-0.5 hover:shadow-lift"
+    :style="{ borderLeftColor: accentColor, borderLeftWidth: '3px' }"
+  >
+    <div class="flex items-center justify-between gap-2">
+      <span class="font-mono text-xs font-medium tracking-wide text-slate-400">ORD-{{ orden.id }}</span>
       <StatusBadge :value="orden.estado || 'recibido'" />
-      <span v-if="prioridad" :class="prioridadClasses" class="rounded-full px-2.5 py-1 text-xs font-semibold">{{ prioridad.label }}</span>
     </div>
 
     <div class="mt-3">
@@ -18,7 +22,10 @@
       </div>
       <div>
         <p class="text-slate-400">En taller</p>
-        <p class="mt-0.5 font-medium text-slate-700 dark:text-slate-200">{{ diasEnTaller === null ? '-' : `${diasEnTaller} dias` }}</p>
+        <p class="mt-0.5 flex flex-wrap items-center gap-1 font-medium text-slate-700 dark:text-slate-200">
+          {{ diasEnTaller === null ? '-' : `${diasEnTaller} dias` }}
+          <span v-if="prioridad" :class="prioridadClasses" class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{{ prioridad.label }}</span>
+        </p>
       </div>
       <div>
         <p class="text-slate-400">Saldo</p>
@@ -73,6 +80,18 @@ function confirmarEstado() {
   emit('cambiar-estado', { orden: props.orden, estado: nuevoEstado.value })
   cambiandoEstado.value = false
 }
+
+// Mismos hex que StatusBadge.vue y el donut del dashboard, para que el
+// acento de color de la tarjeta, el badge y los charts sean consistentes.
+const accentColor = computed(() => {
+  const estado = (props.orden.estado || '').toLowerCase()
+  if (estado.includes('cancel')) return '#ef4444'
+  if (estado.includes('entreg')) return '#a855f7'
+  if (estado.includes('listo') || estado.includes('reparad')) return '#22c55e'
+  if (estado.includes('repuesto')) return '#f97316'
+  if (estado.includes('repar') || estado.includes('proceso')) return '#3b66f5'
+  return '#64748b'
+})
 
 // Si la orden ya tiene fecha de entrega, "dias en taller" es la duracion
 // real de la reparacion (fecha_entrega - fecha_ingreso), no crece para
