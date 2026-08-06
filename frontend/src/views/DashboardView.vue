@@ -38,8 +38,9 @@
 
   <div v-else class="space-y-6">
     <!-- Fila 1: lo mas importante primero -->
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
       <StatCard label="Pendientes" :value="formatNumber(pendientesCount)" icon="clock" tone="slate" hint="Equipos por iniciar reparacion" />
+      <StatCard label="Listo para entregar" :value="formatNumber(listosCount)" icon="check" tone="green" hint="Esperando que el cliente retire" />
       <StatCard label="Entregadas" :value="formatNumber(entregadasCount)" icon="check" tone="purple" hint="Ordenes ya retiradas por el cliente" />
       <StatCard label="Ingresos del periodo" :value="formatCurrency(ingresosPeriodo)" icon="payments" tone="brand" :hint="`Pagos y otros ingresos · ${periodLabel}`" />
       <StatCard label="Saldo pendiente" :value="formatCurrency(saldoPendiente)" icon="cash" tone="orange" hint="Cartera por cobrar, todas las ordenes" />
@@ -267,6 +268,7 @@ const saldoPendiente = computed(() => ordenes.value.reduce((sum, orden) => sum +
 
 const orderStatus = computed(() => statusGroups.map((group) => ({ ...group, value: countOrders(group.match, ordenes.value) })))
 const pendientesCount = computed(() => orderStatus.value.find((item) => item.key === 'pendiente')?.value || 0)
+const listosCount = computed(() => orderStatus.value.find((item) => item.key === 'listo')?.value || 0)
 const entregadasCount = computed(() => orderStatus.value.find((item) => item.key === 'entregado')?.value || 0)
 
 // Cliente no tiene columna created_at en el backend (ver models/cliente.py).
