@@ -8,7 +8,9 @@
       class="fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-slate-200 bg-white/95 shadow-soft transition-all duration-200 dark:border-slate-800 dark:bg-slate-950/95"
     >
       <div class="flex h-16 items-center gap-3 border-b border-slate-100 px-5 dark:border-slate-800" :class="ui.sidebarCollapsed && 'lg:justify-center lg:px-0'">
-        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">FF</div>
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
+          <img src="/logo-mark.png" alt="FixFast" class="h-full w-full object-contain" />
+        </div>
         <div v-if="!ui.sidebarCollapsed">
           <p class="text-sm font-semibold leading-4">FixFast</p>
           <p class="text-xs text-slate-500 dark:text-slate-400">Repair ERP</p>

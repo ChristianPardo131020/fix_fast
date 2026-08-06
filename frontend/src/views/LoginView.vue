@@ -2,7 +2,9 @@
   <main class="grid min-h-screen bg-slate-950 text-white lg:grid-cols-[1.05fr_0.95fr]">
     <section class="hidden flex-col justify-between bg-slate-950 p-10 lg:flex">
       <div class="flex items-center gap-3">
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">FF</div>
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
+          <img src="/logo-mark.png" alt="FixFast" class="h-full w-full object-contain" />
+        </div>
         <div>
           <p class="font-semibold">FixFast</p>
           <p class="text-sm text-slate-400">Panel del equipo del taller</p>
@@ -28,7 +30,9 @@
     <section class="flex items-center justify-center bg-slate-50 px-4 py-10 text-slate-950 dark:bg-slate-950 dark:text-white">
       <div class="w-full max-w-md">
         <div class="mb-8 flex items-center gap-3 lg:hidden">
-          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-950 text-sm font-bold text-white dark:bg-white dark:text-slate-950">FF</div>
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
+            <img src="/logo-mark.png" alt="FixFast" class="h-full w-full object-contain" />
+          </div>
           <div>
             <p class="font-semibold">FixFast</p>
             <p class="text-sm text-slate-500">Panel del equipo del taller</p>
