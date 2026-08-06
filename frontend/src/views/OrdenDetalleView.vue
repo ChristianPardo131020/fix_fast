@@ -382,11 +382,21 @@ async function loadHistorial() {
 }
 
 onMounted(async () => {
+  // Solo una orden que de verdad no existe (o no carga) debe mostrar
+  // "Orden no encontrada". Antes, si clientes/pagos/historial fallaban
+  // por cualquier motivo (una API caida, una ruta vieja, lo que sea),
+  // el catch de abajo tapaba una orden real con ese mensaje -- muy
+  // confuso, porque la orden si existia.
   try {
-    const [, clientesResponse] = await Promise.all([loadOrden(), run(() => clientesApi.list()), loadPagos(), loadHistorial()])
-    clientes.value = clientesResponse.data
+    await loadOrden()
   } catch {
     notFound.value = true
+    return
+  }
+
+  const [clientesResult] = await Promise.allSettled([run(() => clientesApi.list()), loadPagos(), loadHistorial()])
+  if (clientesResult.status === 'fulfilled') {
+    clientes.value = clientesResult.value.data
   }
 })
 </script>
