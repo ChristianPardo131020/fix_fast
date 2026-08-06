@@ -1,7 +1,10 @@
 import http from './http'
 
 export const dashboardApi = {
-  get: () => http.get('/dashboard/'),
+  // params: { year, month?, chart_granularity? } — ver
+  // backend/app/routes/dashboard_routes.py. Todo lo que pinta el
+  // dashboard viene ya calculado en esta unica llamada.
+  get: (params) => http.get('/dashboard/', { params }),
 }
 
 export const clientesApi = {

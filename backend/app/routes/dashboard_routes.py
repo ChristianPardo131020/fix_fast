@@ -1,17 +1,12 @@
-from fastapi import APIRouter, Depends
+from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from app.database import get_db
-
-from app.models.cliente import Cliente
-from app.models.orden import Orden
-from app.models.pago import Pago
-from app.models.movimiento_caja import MovimientoCaja
-
-from app.schemas.dashboard_schema import (
-    DashboardResponse
-)
+from app.schemas.dashboard_schema import DashboardResponse
+from app.services.dashboard_service import build_dashboard
 from app.auth.dependencies import get_current_user
 
 router = APIRouter(
@@ -20,71 +15,22 @@ router = APIRouter(
     dependencies=[Depends(get_current_user)]
 )
 
-@router.get("/",
-            response_model=DashboardResponse)
 
+@router.get("/", response_model=DashboardResponse)
 def obtener_dashboard(
-    db: Session = Depends(get_db)
+    year: int = Query(default_factory=lambda: datetime.utcnow().year, ge=2000, le=2100),
+    month: Optional[int] = Query(default=None, ge=1, le=12, description="1-12, o vacio para ver todo el año"),
+    chart_granularity: Optional[str] = Query(
+        default=None,
+        pattern="^(day|week|month|year)$",
+        description="Granularidad del grafico de flujo de caja. Por defecto: 'day' si hay mes elegido, 'month' si es todo el año.",
+    ),
+    db: Session = Depends(get_db),
 ):
-
-    total_clientes = db.query(
-        Cliente
-    ).count()
-
-    total_ordenes = db.query(
-        Orden
-    ).count()
-
-    ordenes_activas = db.query(
-        Orden
-    ).filter(
-        Orden.estado != "entregado"
-    ).count()
-
-    ordenes_entregadas = db.query(
-        Orden
-    ).filter(
-        Orden.estado == "entregado"
-    ).count()
-
-    # Ingresos totales = pagos facturados de ordenes + otros ingresos
-    # sin factura (ventas de pilas, accesorios, etc. registrados en
-    # movimientos_caja con tipo="ingreso").
-    ingresos_pagos = db.query(
-        func.coalesce(
-            func.sum(Pago.valor),
-            0
-        )
-    ).scalar()
-
-    otros_ingresos = db.query(
-        func.coalesce(
-            func.sum(MovimientoCaja.valor),
-            0
-        )
-    ).filter(
-        MovimientoCaja.tipo == "ingreso"
-    ).scalar()
-
-    ingresos_totales = ingresos_pagos + otros_ingresos
-
-    saldo_pendiente = db.query(
-        func.coalesce(
-            func.sum(Orden.saldo),
-            0
-        )
-    ).scalar()
-
-    total_pagos = db.query(
-        Pago
-    ).count()
-
-    return {
-        "total_clientes": total_clientes,
-        "total_ordenes": total_ordenes,
-        "ordenes_activas": ordenes_activas,
-        "ordenes_entregadas": ordenes_entregadas,
-        "ingresos_totales": ingresos_totales,
-        "saldo_pendiente": saldo_pendiente,
-        "total_pagos": total_pagos
-    }
+    """
+    Todo lo que necesita el dashboard en una sola llamada, ya agregado:
+    kpis, cashflow, estados de ordenes, metodos de pago, alertas
+    automaticas y KPIs secundarios. El frontend no calcula nada — solo
+    pinta esta respuesta.
+    """
+    return build_dashboard(db, year=year, month=month, chart_granularity=chart_granularity)

@@ -179,6 +179,7 @@ import StatCard from '../components/StatCard.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { clientesApi, ordenesApi, pagosApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
+import { ESTADOS_LABELS } from '../constants/estados'
 import { useFormatters } from '../composables/useFormatters'
 
 const props = defineProps({
@@ -189,7 +190,7 @@ const router = useRouter()
 const { formatCurrency, formatDate } = useFormatters()
 const { run } = useApiState()
 
-const estados = ['Pendiente', 'En reparacion', 'Esperando repuesto', 'Listo', 'Entregado', 'Cancelado']
+const estados = ESTADOS_LABELS
 const tabs = [
   { key: 'resumen', label: 'Resumen' },
   { key: 'pagos', label: 'Pagos' },

@@ -38,13 +38,15 @@ def crear_pago(
 
     db.add(nuevo_pago)
 
-    # descontar saldo
-    orden.saldo = orden.saldo - pago.valor
-
-    # si saldo <= 0
-    if orden.saldo <= 0:
-        orden.saldo = 0
-        orden.estado = "pagado"
+    # descontar saldo. NOTA: antes esto tambien forzaba
+    # orden.estado = "pagado" cuando el saldo llegaba a 0, pero "pagado"
+    # es un estado de COBRANZA, no del flujo operativo de la orden
+    # (Pendiente/Diagnostico/.../Entregado) — un equipo puede estar
+    # totalmente pagado y seguir en reparacion. Mezclar ambos rompia el
+    # matching de estado en toda la UI (badges, donut, filtros). El saldo
+    # ya alcanza para saber si esta pagada; el estado operativo se
+    # cambia aparte, explicitamente, desde "Cambiar estado".
+    orden.saldo = max(orden.saldo - pago.valor, 0)
 
     db.commit()
 

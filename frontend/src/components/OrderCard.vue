@@ -56,6 +56,7 @@ import BaseButton from './BaseButton.vue'
 import BaseCard from './BaseCard.vue'
 import BaseInput from './BaseInput.vue'
 import StatusBadge from './StatusBadge.vue'
+import { resolveEstado } from '../constants/estados'
 import { useFormatters } from '../composables/useFormatters'
 
 const props = defineProps({
@@ -81,17 +82,13 @@ function confirmarEstado() {
   cambiandoEstado.value = false
 }
 
-// Mismos hex que StatusBadge.vue y el donut del dashboard, para que el
-// acento de color de la tarjeta, el badge y los charts sean consistentes.
-const accentColor = computed(() => {
-  const estado = (props.orden.estado || '').toLowerCase()
-  if (estado.includes('cancel')) return '#ef4444'
-  if (estado.includes('entreg')) return '#a855f7'
-  if (estado.includes('listo') || estado.includes('reparad')) return '#22c55e'
-  if (estado.includes('repuesto')) return '#f97316'
-  if (estado.includes('repar') || estado.includes('proceso')) return '#3b66f5'
-  return '#64748b'
-})
+// Mismo color que StatusBadge.vue y el donut del dashboard (vienen del
+// mismo resolveEstado), para que el acento de la tarjeta, el badge y
+// los charts sean consistentes.
+const accentColor = computed(() => resolveEstado(props.orden.estado).color)
+
+const estadoKey = computed(() => resolveEstado(props.orden.estado).key)
+const esFinal = computed(() => estadoKey.value === 'entregado' || estadoKey.value === 'cancelado')
 
 // Si la orden ya tiene fecha de entrega, "dias en taller" es la duracion
 // real de la reparacion (fecha_entrega - fecha_ingreso), no crece para
@@ -105,8 +102,7 @@ const diasEnTaller = computed(() => {
     const ms = new Date(props.orden.fecha_entrega).getTime() - new Date(props.orden.fecha_ingreso).getTime()
     return Math.max(Math.floor(ms / 86_400_000), 0)
   }
-  const estado = (props.orden.estado || '').toLowerCase()
-  if (estado.includes('entreg') || estado.includes('cancel')) return null
+  if (esFinal.value) return null
   const ms = Date.now() - new Date(props.orden.fecha_ingreso).getTime()
   return Math.max(Math.floor(ms / 86_400_000), 0)
 })
@@ -115,8 +111,7 @@ const diasEnTaller = computed(() => {
 // segun cuantos dias lleva la orden sin entregarse. Ordenes ya
 // entregadas o canceladas no la necesitan.
 const prioridad = computed(() => {
-  const estado = (props.orden.estado || '').toLowerCase()
-  if (estado.includes('entreg') || estado.includes('cancel')) return null
+  if (esFinal.value) return null
 
   if (diasEnTaller.value > 7) return { label: 'Urgente', tone: 'red' }
   if (diasEnTaller.value > 3) return { label: 'Atencion', tone: 'orange' }

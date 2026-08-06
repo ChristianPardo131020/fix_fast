@@ -1,9 +1,25 @@
+import {
+  ArcElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Filler,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Tooltip,
+} from 'chart.js'
 import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'
 import router from './router'
 import { createPinia } from 'pinia'
 import { useAuthStore } from './stores/auth'
+
+// Registro global de Chart.js: varios componentes de dashboard/ usan
+// Line/Doughnut (vue-chartjs), asi que se registra una sola vez aca en
+// vez de repetirlo en cada componente que dibuja un chart.
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend, Filler)
 
 const app = createApp(App)
 

@@ -139,6 +139,7 @@ import FabButton from '../components/FabButton.vue'
 import OrderCard from '../components/OrderCard.vue'
 import PageHeader from '../components/PageHeader.vue'
 import Paginator from '../components/Paginator.vue'
+import { ESTADOS_LABELS } from '../constants/estados'
 import { clientesApi, ordenesApi, pagosApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
@@ -156,7 +157,7 @@ const statusFilter = ref('')
 const modalOpen = ref(false)
 const saving = ref(false)
 const editingId = ref(null)
-const estados = ['Pendiente', 'En reparacion', 'Esperando repuesto', 'Listo', 'Entregado', 'Cancelado']
+const estados = ESTADOS_LABELS
 
 const showNewCliente = ref(false)
 const savingCliente = ref(false)

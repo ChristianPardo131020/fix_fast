@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.historial_estado import HistorialEstado
 from app.models.orden import Orden
+from app.models.usuario import Usuario
 from app.schemas.orden_schema import (
     OrdenCreate,
     OrdenResponse
@@ -75,7 +77,8 @@ def obtener_orden(
 def actualizar_orden(
     orden_id: int,
     datos: OrdenCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user)
 ):
     orden = db.query(Orden).filter(
         Orden.id == orden_id
@@ -87,8 +90,24 @@ def actualizar_orden(
             detail="Orden no encontrada"
         )
 
+    estado_anterior = orden.estado
+
     for key, value in datos.dict().items():
         setattr(orden, key, value)
+
+    # Registra el cambio en historial_estados solo cuando el estado
+    # realmente cambio (un PUT que actualiza otros campos sin tocar el
+    # estado no genera ruido en el historial). Esto habilita metricas
+    # honestas como "tiempo promedio en cada estado" o "dias sin
+    # movimiento" en el dashboard, en vez de aproximarlas con
+    # fecha_ingreso para todo.
+    if orden.estado != estado_anterior:
+        db.add(HistorialEstado(
+            orden_id=orden.id,
+            estado_anterior=estado_anterior,
+            estado_nuevo=orden.estado,
+            usuario_id=usuario.id,
+        ))
 
     db.commit()
 
