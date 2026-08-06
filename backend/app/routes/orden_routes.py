@@ -48,7 +48,10 @@ def crear_orden(
 def listar_ordenes(
     db: Session = Depends(get_db)
 ):
-    return db.query(Orden).all()
+    # Mas nueva primero. fecha_ingreso es la fecha de negocio (la que se
+    # ve en la tarjeta); id de desempate para ordenes cargadas el mismo
+    # dia, para que el orden no salte entre refrescos.
+    return db.query(Orden).order_by(Orden.fecha_ingreso.desc(), Orden.id.desc()).all()
 
 # obtener orden
 @router.get("/{orden_id}",
