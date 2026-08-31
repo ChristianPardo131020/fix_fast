@@ -212,7 +212,7 @@ const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', '
 const now = new Date()
 const selectedYear = ref(now.getFullYear())
 const selectedMonth = ref(now.getMonth() + 1) // 1-12, null = todo el año
-const selectedDay = ref(null) // null = todo el mes
+const selectedDay = ref(now.getDate()) // por defecto hoy
 const chartGranularity = ref(null) // null = que el backend elija el default segun el periodo
 
 const daysInSelectedMonth = computed(() => {
