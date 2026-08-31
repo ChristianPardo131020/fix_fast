@@ -8,7 +8,7 @@
       Controla arriendos, empleados, servicios, compras, herramientas, transportes y otros gastos del taller. Los pagos
       de ordenes y otras ventas se registran desde <RouterLink :to="{ name: 'pagos' }" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Ingresos</RouterLink>.
       <template #actions>
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex items-center gap-2">
            <select v-model="selectedMonth" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
              <option :value="null">Todos los meses</option>
              <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
