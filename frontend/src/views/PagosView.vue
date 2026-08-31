@@ -2,8 +2,19 @@
   <div class="space-y-6">
     <PageHeader title="Ingresos" subtitle="Pagos de ordenes y ventas de mostrador (pilas, accesorios, servicios rapidos), todo en un solo lugar.">
       <template #actions>
-        <div class="hidden sm:block">
-          <BaseButton icon="plus" @click="openCreate">Registrar ingreso</BaseButton>
+        <div class="flex flex-wrap items-center gap-2">
+           <select v-model="selectedMonth" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+             <option :value="null">Todos los meses</option>
+             <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
+           </select>
+           <select v-if="selectedMonth !== null" v-model="selectedDay" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+             <option :value="null">Todos los días</option>
+             <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
+           </select>
+           <select v-model="selectedYear" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+             <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
+           </select>
+           <BaseButton icon="plus" @click="openCreate">Registrar ingreso</BaseButton>
         </div>
       </template>
     </PageHeader>
@@ -50,8 +61,8 @@
     </div>
 
     <BaseCard title="Historial de ingresos" subtitle="Pagos de ordenes y ventas sin factura, con trazabilidad" content-class="p-4">
-      <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_minmax(120px,180px)_minmax(120px,180px)_minmax(120px,180px)]">
-        <label class="relative block lg:col-span-1">
+      <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_190px]">
+        <label class="relative block">
           <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
           <input v-model="filters.search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por orden, referencia, metodo o categoria" />
         </label>
@@ -60,19 +71,6 @@
           <option value="orden">De ordenes</option>
           <option v-for="cat in categoriasIngreso" :key="cat.value" :value="cat.value">{{ cat.label }}</option>
         </BaseInput>
-        <div class="flex items-center gap-2">
-           <select v-model="selectedYear" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
-             <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
-           </select>
-           <select v-model="selectedMonth" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
-             <option :value="null">Todo el año</option>
-             <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
-           </select>
-           <select v-model="selectedDay" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
-             <option :value="null">Todo el mes</option>
-             <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
-           </select>
-        </div>
       </div>
 
       <BaseTable :columns="columns" :rows="filteredRows" :loading="loading">

@@ -20,8 +20,6 @@
            <select v-model="selectedYear" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
              <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
            </select>
-           <BaseButton variant="secondary" disabled>Exportar Excel</BaseButton>
-           <BaseButton variant="secondary" disabled>Reporte PDF</BaseButton>
            <BaseButton icon="plus" @click="modalOpen = true">Nuevo egreso</BaseButton>
         </div>
       </template>
