@@ -252,12 +252,14 @@ async function loadDashboard() {
   loading.value = true
   loadError.value = ''
   try {
-    const response = await run(() => dashboardApi.get({
+    const params = {
       year: selectedYear.value,
-      month: selectedMonth.value,
-      day: selectedDay.value,
-      chart_granularity: granularityTouchedByUser.value ? chartGranularity.value : null,
-    }))
+    }
+    if (selectedMonth.value !== null) params.month = selectedMonth.value
+    if (selectedDay.value !== null) params.day = selectedDay.value
+    if (granularityTouchedByUser.value) params.chart_granularity = chartGranularity.value
+
+    const response = await run(() => dashboardApi.get(params))
 
     // Chequeo de forma antes de asignar: si la respuesta no trae lo que
     // se espera (backend caido a mitad de un deploy, proxy devolviendo
