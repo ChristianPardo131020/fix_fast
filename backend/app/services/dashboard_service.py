@@ -75,13 +75,13 @@ _MESES = [
 ]
 
 
-def resolver_periodo(year: int, month: int | None) -> Periodo:
+def resolver_periodo(year: int, month: int | None, day: int | None = None) -> Periodo:
     if month is None:
         inicio = date(year, 1, 1)
         fin = date(year + 1, 1, 1)
         inicio_anterior = date(year - 1, 1, 1)
         label = f"Todo {year}"
-    else:
+    elif day is None:
         inicio = date(year, month, 1)
         fin = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
         if month == 1:
@@ -89,6 +89,11 @@ def resolver_periodo(year: int, month: int | None) -> Periodo:
         else:
             inicio_anterior = date(year, month - 1, 1)
         label = f"{_MESES[month - 1]} {year}"
+    else:
+        inicio = date(year, month, day)
+        fin = inicio + timedelta(days=1)
+        inicio_anterior = inicio - timedelta(days=1)
+        label = f"{day} de {_MESES[month - 1]} {year}"
 
     return Periodo(inicio=inicio, fin=fin, inicio_anterior=inicio_anterior, fin_anterior=inicio, label=label)
 
@@ -521,8 +526,8 @@ def _alerts(db: Session, periodo: Periodo) -> list[dict]:
 # Entry point
 # --------------------------------------------------------------------------
 
-def build_dashboard(db: Session, year: int, month: int | None, chart_granularity: str | None) -> dict:
-    periodo = resolver_periodo(year, month)
+def build_dashboard(db: Session, year: int, month: int | None, day: int | None, chart_granularity: str | None) -> dict:
+    periodo = resolver_periodo(year, month, day)
     granularidad = chart_granularity if chart_granularity in GRANULARIDADES_VALIDAS else ("day" if month is not None else "month")
 
     kpis, estados_periodo = _kpis(db, periodo)
@@ -531,6 +536,7 @@ def build_dashboard(db: Session, year: int, month: int | None, chart_granularity
         "periodo": {
             "year": year,
             "month": month,
+            "day": day,
             "label": periodo.label,
             "inicio": periodo.inicio.isoformat(),
             "fin": (periodo.fin - timedelta(days=1)).isoformat(),

@@ -21,6 +21,7 @@ class MetricInt(BaseModel):
 class PeriodoInfo(BaseModel):
     year: int
     month: Optional[int] = None
+    day: Optional[int] = None
     label: str
     inicio: str
     fin: str

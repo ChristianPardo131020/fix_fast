@@ -11,6 +11,14 @@
             <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
           </select>
           <select
+            v-if="selectedMonth !== null"
+            v-model="selectedDay"
+            class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <option :value="null">Todos los días</option>
+            <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
+          </select>
+          <select
             v-model="selectedYear"
             class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
           >
@@ -204,7 +212,18 @@ const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', '
 const now = new Date()
 const selectedYear = ref(now.getFullYear())
 const selectedMonth = ref(now.getMonth() + 1) // 1-12, null = todo el año
+const selectedDay = ref(null) // null = todo el mes
 const chartGranularity = ref(null) // null = que el backend elija el default segun el periodo
+
+const daysInSelectedMonth = computed(() => {
+  if (!selectedMonth.value) return 0
+  return new Date(selectedYear.value, selectedMonth.value, 0).getDate()
+})
+
+// Si el usuario cambia mes/año, resetear dia si queda invalido
+watch([selectedYear, selectedMonth], () => {
+  selectedDay.value = null
+})
 
 // El backend calcula todo — el frontend solo pinta "dashboard" tal cual
 // llega. availableYears es la unica lista que se arma en el cliente, y
@@ -236,6 +255,7 @@ async function loadDashboard() {
     const response = await run(() => dashboardApi.get({
       year: selectedYear.value,
       month: selectedMonth.value,
+      day: selectedDay.value,
       chart_granularity: granularityTouchedByUser.value ? chartGranularity.value : null,
     }))
 
@@ -263,7 +283,7 @@ function onGranularityChange(value) {
   loadDashboard()
 }
 
-watch([selectedYear, selectedMonth], loadDashboard)
+watch([selectedYear, selectedMonth, selectedDay], loadDashboard)
 
 onMounted(loadDashboard)
 </script>

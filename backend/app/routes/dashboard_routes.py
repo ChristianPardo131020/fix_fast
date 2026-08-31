@@ -20,6 +20,7 @@ router = APIRouter(
 def obtener_dashboard(
     year: int = Query(default_factory=lambda: datetime.utcnow().year, ge=2000, le=2100),
     month: Optional[int] = Query(default=None, ge=1, le=12, description="1-12, o vacio para ver todo el año"),
+    day: Optional[int] = Query(default=None, ge=1, le=31, description="1-31, o vacio para ver todo el mes"),
     chart_granularity: Optional[str] = Query(
         default=None,
         pattern="^(day|week|month|year)$",
@@ -33,4 +34,4 @@ def obtener_dashboard(
     automaticas y KPIs secundarios. El frontend no calcula nada — solo
     pinta esta respuesta.
     """
-    return build_dashboard(db, year=year, month=month, chart_granularity=chart_granularity)
+    return build_dashboard(db, year=year, month=month, day=day, chart_granularity=chart_granularity)
