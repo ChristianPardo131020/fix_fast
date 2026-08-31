@@ -60,18 +60,28 @@
     </div>
 
     <BaseCard title="Egresos de caja" subtitle="Gastos operativos y trazabilidad financiera" content-class="p-4">
-      <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_190px]">
-        <label class="relative block">
+      <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_minmax(120px,180px)_minmax(120px,180px)_minmax(120px,180px)]">
+        <label class="relative block lg:col-span-1">
           <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-          <input v-model="filters.search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar descripcion, metodo o categoria" />
+          <input v-model="filters.search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar descripción, método o categoría" />
         </label>
         <BaseInput v-model="filters.categoria" type="select">
-          <option value="">Todas las categorias</option>
+          <option value="">Todas las categorías</option>
           <option v-for="categoria in categorias" :key="categoria" :value="categoria">{{ categoria }}</option>
         </BaseInput>
-      </div>
-      <div class="mb-4">
-        <PeriodFilter v-model="periodo" />
+        <div class="flex items-center gap-2">
+           <select v-model="selectedYear" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+             <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
+           </select>
+           <select v-model="selectedMonth" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+             <option :value="null">Todo el año</option>
+             <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
+           </select>
+           <select v-model="selectedDay" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+             <option :value="null">Todo el mes</option>
+             <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
+           </select>
+        </div>
       </div>
 
       <FinanceMovementsTable :rows="filteredMovimientos" :loading="loading" @delete="removeMovimiento" />
@@ -92,13 +102,11 @@ import EmptyState from '../components/EmptyState.vue'
 import FinanceMovementsTable from '../components/FinanceMovementsTable.vue'
 import MovimientoCajaModal from '../components/MovimientoCajaModal.vue'
 import PageHeader from '../components/PageHeader.vue'
-import PeriodFilter from '../components/PeriodFilter.vue'
 import StatCard from '../components/StatCard.vue'
 import { movimientosCajaApi } from '../api/movimientosCajaApi'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 import { useUiStore } from '../stores/ui'
-import { rangoEsteMes } from '../utils/dateRanges'
 
 const { formatCurrency, formatNumber } = useFormatters()
 const { loading, run } = useApiState()
@@ -110,16 +118,28 @@ const movimientos = ref([])
 const modalOpen = ref(false)
 const saving = ref(false)
 const categorias = ['arriendo', 'empleado', 'servicios', 'herramientas', 'transporte', 'compra', 'prestamo', 'otros']
-// Arranca en "Este mes" -- ver la lista completa desde el primer
-// egreso registrado no es lo que se quiere ver por defecto al entrar;
-// el preset "Todo" del filtro sigue disponible para eso.
-const filters = reactive({ search: '', categoria: '', ...rangoEsteMes() })
 
-// Puente entre el objeto { desde, hasta } que espera PeriodFilter y los
-// dos campos sueltos de filters (mas comodos para el resto del archivo).
-const periodo = computed({
-  get: () => ({ desde: filters.desde, hasta: filters.hasta }),
-  set: (value) => { filters.desde = value.desde; filters.hasta = value.hasta },
+const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+const now = new Date()
+const selectedYear = ref(now.getFullYear())
+const selectedMonth = ref(now.getMonth() + 1)
+const selectedDay = ref(now.getDate())
+
+const filters = reactive({ search: '', categoria: '' })
+
+const availableYears = computed(() => {
+  const years = new Set([now.getFullYear()])
+  movimientos.value.forEach(m => {
+    if (m.created_at) {
+      years.add(new Date(m.created_at).getFullYear())
+    }
+  })
+  return [...years].sort((a, b) => b - a)
+})
+
+const daysInSelectedMonth = computed(() => {
+  if (!selectedMonth.value) return 0
+  return new Date(selectedYear.value, selectedMonth.value, 0).getDate()
 })
 
 const filteredMovimientos = computed(() => {
@@ -133,10 +153,15 @@ const filteredMovimientos = computed(() => {
     )
     const matchesTipo = movimiento.tipo === 'egreso'
     const matchesCategoria = !filters.categoria || movimiento.categoria === filters.categoria
-    const fechaCorta = movimiento.created_at?.slice(0, 10)
-    const matchesPeriodo = (!filters.desde || fechaCorta >= filters.desde) && (!filters.hasta || fechaCorta <= filters.hasta)
 
-    return matchesSearch && matchesTipo && matchesCategoria && matchesPeriodo
+    const fecha = movimiento.created_at ? new Date(movimiento.created_at) : null
+    if (!fecha) return false
+
+    const matchesYear = fecha.getFullYear() === selectedYear.value
+    const matchesMonth = selectedMonth.value === null || (fecha.getMonth() + 1) === selectedMonth.value
+    const matchesDay = selectedDay.value === null || fecha.getDate() === selectedDay.value
+
+    return matchesSearch && matchesTipo && matchesCategoria && matchesYear && matchesMonth && matchesDay
   })
 })
 

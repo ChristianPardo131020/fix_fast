@@ -99,6 +99,10 @@ def eliminar_pago(
             detail="Pago no encontrado"
         )
 
+    orden = db.query(Orden).filter(Orden.id == pago.orden_id).first()
+    if orden:
+        orden.saldo += pago.valor
+
     db.delete(pago)
 
     db.commit()

@@ -50,8 +50,8 @@
     </div>
 
     <BaseCard title="Historial de ingresos" subtitle="Pagos de ordenes y ventas sin factura, con trazabilidad" content-class="p-4">
-      <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_190px]">
-        <label class="relative block">
+      <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_minmax(120px,180px)_minmax(120px,180px)_minmax(120px,180px)]">
+        <label class="relative block lg:col-span-1">
           <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
           <input v-model="filters.search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por orden, referencia, metodo o categoria" />
         </label>
@@ -60,9 +60,19 @@
           <option value="orden">De ordenes</option>
           <option v-for="cat in categoriasIngreso" :key="cat.value" :value="cat.value">{{ cat.label }}</option>
         </BaseInput>
-      </div>
-      <div class="mb-4">
-        <PeriodFilter v-model="periodo" />
+        <div class="flex items-center gap-2">
+           <select v-model="selectedYear" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+             <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
+           </select>
+           <select v-model="selectedMonth" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+             <option :value="null">Todo el año</option>
+             <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
+           </select>
+           <select v-model="selectedDay" class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+             <option :value="null">Todo el mes</option>
+             <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
+           </select>
+        </div>
       </div>
 
       <BaseTable :columns="columns" :rows="filteredRows" :loading="loading">
@@ -178,17 +188,29 @@ const ordenes = ref([])
 const modalOpen = ref(false)
 const saving = ref(false)
 const origenTipo = ref('orden')
-// Arranca en "Este mes" -- ver la lista completa desde el primer pago
-// registrado (miles de filas) no es lo que se quiere ver por defecto al
-// entrar; el preset "Todo" del filtro sigue disponible para eso.
-const filters = reactive({ search: '', origen: '', ...rangoEsteMes() })
+
+const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+const now = new Date()
+const selectedYear = ref(now.getFullYear())
+const selectedMonth = ref(now.getMonth() + 1)
+const selectedDay = ref(now.getDate())
+
+const filters = reactive({ search: '', origen: '' })
 const form = reactive({ orden_id: '', categoria: 'venta', valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
 
-// Puente entre el objeto { desde, hasta } que espera PeriodFilter y los
-// dos campos sueltos de filters (mas comodos para el resto del archivo).
-const periodo = computed({
-  get: () => ({ desde: filters.desde, hasta: filters.hasta }),
-  set: (value) => { filters.desde = value.desde; filters.hasta = value.hasta },
+const availableYears = computed(() => {
+  const years = new Set([now.getFullYear()])
+  unifiedRows.value.forEach(row => {
+    if (row.fecha) {
+      years.add(new Date(row.fecha).getFullYear())
+    }
+  })
+  return [...years].sort((a, b) => b - a)
+})
+
+const daysInSelectedMonth = computed(() => {
+  if (!selectedMonth.value) return 0
+  return new Date(selectedYear.value, selectedMonth.value, 0).getDate()
 })
 
 const categoriasIngreso = [
@@ -278,9 +300,15 @@ const filteredRows = computed(() => {
       || row.metodo_pago.toLowerCase().includes(term)
     )
     const matchesOrigen = !filters.origen || row.categoria === filters.origen
-    const fechaCorta = row.fecha?.slice(0, 10)
-    const matchesPeriodo = (!filters.desde || fechaCorta >= filters.desde) && (!filters.hasta || fechaCorta <= filters.hasta)
-    return matchesSearch && matchesOrigen && matchesPeriodo
+
+    const fecha = row.fecha ? new Date(row.fecha) : null
+    if (!fecha) return false
+
+    const matchesYear = fecha.getFullYear() === selectedYear.value
+    const matchesMonth = selectedMonth.value === null || (fecha.getMonth() + 1) === selectedMonth.value
+    const matchesDay = selectedDay.value === null || fecha.getDate() === selectedDay.value
+
+    return matchesSearch && matchesOrigen && matchesYear && matchesMonth && matchesDay
   })
 })
 
