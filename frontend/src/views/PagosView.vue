@@ -165,14 +165,13 @@ import ComboSelect from '../components/ComboSelect.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FabButton from '../components/FabButton.vue'
 import PageHeader from '../components/PageHeader.vue'
-import PeriodFilter from '../components/PeriodFilter.vue'
 import StatCard from '../components/StatCard.vue'
 import { ordenesApi, pagosApi } from '../api/resources'
 import { movimientosCajaApi } from '../api/movimientosCajaApi'
+import { categoriasApi } from '../api/categoriasApi'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 import { useUiStore } from '../stores/ui'
-import { rangoEsteMes } from '../utils/dateRanges'
 
 const { formatCurrency, formatDate, formatNumber } = useFormatters()
 const { loading, run } = useApiState()
@@ -183,6 +182,7 @@ const router = useRouter()
 const pagos = ref([])
 const movimientosIngreso = ref([])
 const ordenes = ref([])
+const categoriasDinamicas = ref([])
 const modalOpen = ref(false)
 const saving = ref(false)
 const origenTipo = ref('orden')
@@ -211,14 +211,22 @@ const daysInSelectedMonth = computed(() => {
   return new Date(selectedYear.value, selectedMonth.value, 0).getDate()
 })
 
-const categoriasIngreso = [
-  { value: 'venta', label: 'Venta' },
-  { value: 'accesorio', label: 'Accesorio' },
-  { value: 'pila', label: 'Pila' },
-  { value: 'servicio_rapido', label: 'Servicio rapido' },
-  { value: 'otros', label: 'Otros' },
-]
-const CATEGORIA_LABELS = Object.fromEntries(categoriasIngreso.map((cat) => [cat.value, cat.label]))
+const categoriasIngreso = computed(() => {
+  if (categoriasDinamicas.value.length) {
+    return categoriasDinamicas.value.map(c => ({ value: c.nombre, label: c.nombre }))
+  }
+  return [
+    { value: 'venta', label: 'Venta' },
+    { value: 'accesorio', label: 'Accesorio' },
+    { value: 'pila', label: 'Pila' },
+    { value: 'servicio_rapido', label: 'Servicio rapido' },
+    { value: 'otros', label: 'Otros' },
+  ]
+})
+
+const CATEGORIA_LABELS = computed(() => {
+  return Object.fromEntries(categoriasIngreso.value.map((cat) => [cat.value, cat.label]))
+})
 
 const columns = [
   { key: 'origen', label: 'Origen' },
@@ -228,10 +236,6 @@ const columns = [
   { key: 'fecha', label: 'Fecha' },
 ]
 
-// Mapa id->orden para mostrar el equipo junto al numero de orden sin
-// recorrer el arreglo completo por cada fila (mismo patron que
-// OrdenesView.vue con clientes: con ~3500 ordenes, un .find() por fila
-// se nota).
 const ordenesPorId = computed(() => {
   const map = new Map()
   for (const orden of ordenes.value) {
@@ -240,10 +244,6 @@ const ordenesPorId = computed(() => {
   return map
 })
 
-// Opciones del buscador de orden en el modal. Un <select> nativo con
-// miles de <option> es lo que hacia que "Registrar ingreso" se sintiera
-// trabado al elegir la orden -- ComboSelect solo renderiza los
-// resultados que matchean lo tipeado.
 const ordenOptions = computed(() =>
   ordenes.value.map((orden) => ({
     value: orden.id,
@@ -252,9 +252,6 @@ const ordenOptions = computed(() =>
   })),
 )
 
-// Pagos (ligados a una orden) y movimientos de caja tipo "ingreso"
-// (ventas de mostrador, pilas, accesorios, servicios rapidos, otros)
-// se combinan en una sola tabla con forma comun.
 const unifiedRows = computed(() => {
   const pagoRows = pagos.value.map((pago) => {
     const orden = ordenesPorId.value.get(Number(pago.orden_id))
@@ -275,7 +272,7 @@ const unifiedRows = computed(() => {
   const ingresoRows = movimientosIngreso.value.map((mov) => ({
     source: 'movimiento',
     id: mov.id,
-    origenLabel: CATEGORIA_LABELS[mov.categoria] || mov.categoria || 'Otros',
+    origenLabel: CATEGORIA_LABELS.value[mov.categoria] || mov.categoria || 'Otros',
     origenSub: '',
     categoria: mov.categoria || 'otros',
     valor: Number(mov.valor || 0),
@@ -342,7 +339,7 @@ const origenBars = computed(() => {
   return Object.entries(totals)
     .map(([categoria, total]) => ({
       categoria,
-      label: categoria === 'orden' ? 'De ordenes' : (CATEGORIA_LABELS[categoria] || categoria),
+      label: categoria === 'orden' ? 'De ordenes' : (CATEGORIA_LABELS.value[categoria] || categoria),
       total,
       percent: Math.max((total / max) * 100, 6),
     }))
@@ -350,7 +347,8 @@ const origenBars = computed(() => {
 })
 
 function resetForm() {
-  Object.assign(form, { orden_id: '', categoria: 'venta', valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
+  const defaultCat = categoriasIngreso.value.length ? categoriasIngreso.value[0].value : 'venta'
+  Object.assign(form, { orden_id: '', categoria: defaultCat, valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
 }
 
 function openCreate() {
@@ -360,14 +358,16 @@ function openCreate() {
 }
 
 async function loadData() {
-  const [pagosResponse, movimientosResponse, ordenesResponse] = await Promise.all([
+  const [pagosResponse, movimientosResponse, ordenesResponse, catResponse] = await Promise.all([
     run(() => pagosApi.list()),
     run(() => movimientosCajaApi.list()),
     run(() => ordenesApi.list()),
+    run(() => categoriasApi.list('ingreso'))
   ])
   pagos.value = pagosResponse.data
   movimientosIngreso.value = movimientosResponse.data.filter((mov) => mov.tipo === 'ingreso')
   ordenes.value = ordenesResponse.data
+  categoriasDinamicas.value = catResponse.data
 }
 
 async function saveIngreso() {
@@ -419,9 +419,6 @@ onMounted(async () => {
   } catch {
     // noop, ya notificado por useApiState
   }
-  // Acceso rapido desde el Dashboard: /pagos?crear=1 abre el modal de
-  // "Registrar ingreso" directo. Se limpia el query despues para que un
-  // refresh/atras no lo vuelva a abrir solo.
   if (route.query.crear === '1') {
     openCreate()
     const { crear, ...rest } = route.query

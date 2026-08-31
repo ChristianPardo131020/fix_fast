@@ -78,7 +78,7 @@
         </label>
         <BaseInput v-model="filters.categoria" type="select">
           <option value="">Todas las categorías</option>
-          <option v-for="categoria in categorias" :key="categoria" :value="categoria">{{ categoria }}</option>
+          <option v-for="cat in categoriasList" :key="cat" :value="cat">{{ cat }}</option>
         </BaseInput>
       </div>
 
@@ -102,6 +102,7 @@ import MovimientoCajaModal from '../components/MovimientoCajaModal.vue'
 import PageHeader from '../components/PageHeader.vue'
 import StatCard from '../components/StatCard.vue'
 import { movimientosCajaApi } from '../api/movimientosCajaApi'
+import { categoriasApi } from '../api/categoriasApi'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 import { useUiStore } from '../stores/ui'
@@ -113,9 +114,16 @@ const route = useRoute()
 const router = useRouter()
 
 const movimientos = ref([])
+const categoriasDinamicas = ref([])
 const modalOpen = ref(false)
 const saving = ref(false)
-const categorias = ['arriendo', 'empleado', 'servicios', 'herramientas', 'transporte', 'compra', 'prestamo', 'otros']
+
+const categoriasList = computed(() => {
+  if (categoriasDinamicas.value.length) {
+    return categoriasDinamicas.value.map(c => c.nombre)
+  }
+  return ['arriendo', 'empleado', 'servicios', 'herramientas', 'transporte', 'compra', 'prestamo', 'otros']
+})
 
 const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const now = new Date()
@@ -217,8 +225,12 @@ const averageTicket = computed(() => {
 })
 
 async function loadMovimientos() {
-  const response = await run(() => movimientosCajaApi.list())
-  movimientos.value = response.data.filter((movimiento) => movimiento.tipo === 'egreso')
+  const [movResponse, catResponse] = await Promise.all([
+    run(() => movimientosCajaApi.list()),
+    run(() => categoriasApi.list('egreso'))
+  ])
+  movimientos.value = movResponse.data.filter((movimiento) => movimiento.tipo === 'egreso')
+  categoriasDinamicas.value = catResponse.data
 }
 
 async function saveMovimiento(payload) {
@@ -253,9 +265,6 @@ onMounted(async () => {
   } catch {
     // noop, ya notificado por useApiState
   }
-  // Acceso rapido desde el Dashboard: /caja?crear=1 abre el modal de
-  // "Nuevo egreso" directo. Se limpia el query despues para que un
-  // refresh/atras no lo vuelva a abrir solo.
   if (route.query.crear === '1') {
     modalOpen.value = true
     const { crear, ...rest } = route.query

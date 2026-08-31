@@ -27,6 +27,10 @@ from app.routes.movimiento_caja_routes import (
     router as movimiento_caja_router
 )
 
+from app.routes.categoria_routes import (
+    router as categoria_router
+)
+
 from app.routes.public_routes import (
     router as public_router
 )
@@ -53,6 +57,7 @@ app.include_router(pago_router)
 app.include_router(dashboard_router)
 app.include_router(auth_router)
 app.include_router(movimiento_caja_router)
+app.include_router(categoria_router)
 app.include_router(public_router)
 
 @app.get("/")
