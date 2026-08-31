@@ -40,12 +40,13 @@
 </template>
 
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import BaseButton from './BaseButton.vue'
 import BaseInput from './BaseInput.vue'
 import BaseModal from './BaseModal.vue'
 import FinanceTypeBadge from './FinanceTypeBadge.vue'
 import { useFormatters } from '../composables/useFormatters'
+import { categoriasApi } from '../api/categoriasApi'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -55,6 +56,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'save'])
 const { formatCurrency } = useFormatters()
+
+const categoriasDinamicas = ref([])
 
 const categoriasPorTipo = {
   egreso: ['arriendo', 'empleado', 'servicios', 'herramientas', 'transporte', 'compra', 'prestamo', 'otros'],
@@ -78,7 +81,13 @@ const copyPorTipo = {
   },
 }
 
-const categorias = computed(() => categoriasPorTipo[props.tipo] || categoriasPorTipo.egreso)
+const categorias = computed(() => {
+  if (categoriasDinamicas.value.length) {
+    return categoriasDinamicas.value.map(c => c.nombre)
+  }
+  return categoriasPorTipo[props.tipo] || categoriasPorTipo.egreso
+})
+
 const copy = computed(() => copyPorTipo[props.tipo] || copyPorTipo.egreso)
 
 const form = reactive({
@@ -95,6 +104,18 @@ const isOpen = computed({
 
 const formattedValue = computed(() => formatCurrency(form.valor || 0))
 
+async function loadCategorias() {
+  try {
+    const response = await categoriasApi.list(props.tipo)
+    categoriasDinamicas.value = response.data
+    if (categoriasDinamicas.value.length) {
+      form.categoria = categoriasDinamicas.value[0].nombre
+    }
+  } catch (err) {
+    console.error('Error loading categorias for modal:', err)
+  }
+}
+
 watch(
   () => props.modelValue,
   (open) => {
@@ -105,9 +126,16 @@ watch(
         metodo_pago: 'efectivo',
         descripcion: '',
       })
+      loadCategorias()
     }
   },
 )
+
+onMounted(() => {
+  if (props.modelValue) {
+    loadCategorias()
+  }
+})
 
 function submit() {
   emit('save', {
