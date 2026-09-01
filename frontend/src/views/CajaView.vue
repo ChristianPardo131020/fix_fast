@@ -119,10 +119,12 @@ const modalOpen = ref(false)
 const saving = ref(false)
 
 const categoriasList = computed(() => {
-  if (categoriasDinamicas.value.length) {
-    return categoriasDinamicas.value.map(c => c.nombre)
-  }
-  return ['arriendo', 'empleado', 'servicios', 'herramientas', 'transporte', 'compra', 'prestamo', 'otros']
+  const base = categoriasDinamicas.value.length
+    ? categoriasDinamicas.value.map(c => c.nombre)
+    : ['arriendo', 'empleado', 'servicios', 'herramientas', 'transporte', 'compra', 'prestamo', 'otros']
+  // Incluir la categoría generada por compras de inventario
+  if (!base.includes('compra_inventario')) base.push('compra_inventario')
+  return base
 })
 
 const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -225,12 +227,17 @@ const averageTicket = computed(() => {
 })
 
 async function loadMovimientos() {
-  const [movResponse, catResponse] = await Promise.all([
-    run(() => movimientosCajaApi.list()),
-    run(() => categoriasApi.list('egreso'))
-  ])
-  movimientos.value = movResponse.data.filter((movimiento) => movimiento.tipo === 'egreso')
-  categoriasDinamicas.value = catResponse.data
+  loading.value = true
+  try {
+    const [movRes, catRes] = await Promise.allSettled([
+      movimientosCajaApi.list(),
+      categoriasApi.list('egreso'),
+    ])
+    if (movRes.status === 'fulfilled') movimientos.value = movRes.value.data.filter((m) => m.tipo === 'egreso')
+    if (catRes.status === 'fulfilled') categoriasDinamicas.value = catRes.value.data
+  } finally {
+    loading.value = false
+  }
 }
 
 async function saveMovimiento(payload) {

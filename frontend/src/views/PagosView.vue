@@ -244,7 +244,10 @@ const categoriasIngreso = computed(() => {
 })
 
 const CATEGORIA_LABELS = computed(() => {
-  return Object.fromEntries(categoriasIngreso.value.map((cat) => [cat.value, cat.label]))
+  const map = Object.fromEntries(categoriasIngreso.value.map((cat) => [cat.value, cat.label]))
+  // Categorías generadas por los endpoints atómicos de inventario
+  map.venta_producto = 'Venta (inventario)'
+  return map
 })
 
 const columns = [
@@ -400,18 +403,23 @@ function openCreate() {
 }
 
 async function loadData() {
-  const [pagosResponse, movimientosResponse, ordenesResponse, catResponse, prodResponse] = await Promise.all([
-    run(() => pagosApi.list()),
-    run(() => movimientosCajaApi.list()),
-    run(() => ordenesApi.list()),
-    run(() => categoriasApi.list('ingreso')),
-    run(() => inventarioApi.listProductos()),
-  ])
-  pagos.value = pagosResponse.data
-  movimientosIngreso.value = movimientosResponse.data.filter((mov) => mov.tipo === 'ingreso')
-  ordenes.value = ordenesResponse.data
-  categoriasDinamicas.value = catResponse.data
-  productosInventario.value = prodResponse.data
+  loading.value = true
+  try {
+    const [pagosRes, movRes, ordenesRes, catRes, prodRes] = await Promise.allSettled([
+      pagosApi.list(),
+      movimientosCajaApi.list(),
+      ordenesApi.list(),
+      categoriasApi.list('ingreso'),
+      inventarioApi.listProductos(),
+    ])
+    if (pagosRes.status === 'fulfilled') pagos.value = pagosRes.value.data
+    if (movRes.status === 'fulfilled') movimientosIngreso.value = movRes.value.data.filter((mov) => mov.tipo === 'ingreso')
+    if (ordenesRes.status === 'fulfilled') ordenes.value = ordenesRes.value.data
+    if (catRes.status === 'fulfilled') categoriasDinamicas.value = catRes.value.data
+    if (prodRes.status === 'fulfilled') productosInventario.value = prodRes.value.data
+  } finally {
+    loading.value = false
+  }
 }
 
 async function saveIngreso() {

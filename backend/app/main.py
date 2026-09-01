@@ -40,6 +40,28 @@ from app.routes.inventario_routes import (
 )
 app = FastAPI()
 
+
+@app.on_event("startup")
+def _auto_create_tables():
+    """Crea tablas nuevas que aún no existan en Supabase (checkfirst=True
+    por defecto).  Esto evita tener que correr init_db.py a mano cada vez
+    que se agrega un modelo — el Dockerfile solo arranca uvicorn."""
+    from app.database import Base, engine          # noqa: lazy import para no duplicar top-level
+    # Importar todos los modelos para que Base.metadata los conozca
+    import app.models.cliente           # noqa: F401
+    import app.models.usuario           # noqa: F401
+    import app.models.orden             # noqa: F401
+    import app.models.pago              # noqa: F401
+    import app.models.movimiento_caja   # noqa: F401
+    import app.models.historial_estado  # noqa: F401
+    import app.models.categoria         # noqa: F401
+    import app.models.categoria_inventario  # noqa: F401
+    import app.models.proveedor         # noqa: F401
+    import app.models.producto          # noqa: F401
+    import app.models.movimiento_inventario  # noqa: F401
+    import app.models.used_part         # noqa: F401
+    Base.metadata.create_all(bind=engine)
+
 # CORS: orígenes permitidos vía env (csv), ej. "http://localhost:5173"
 cors_origins = [
     origin.strip()

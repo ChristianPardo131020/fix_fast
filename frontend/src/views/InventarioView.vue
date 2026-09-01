@@ -193,14 +193,19 @@ watch(() => compraForm.producto_id, (nuevoId) => {
 })
 
 async function loadData() {
-  const [prodRes, movRes, catRes] = await Promise.all([
-    run(() => inventarioApi.listProductos()),
-    run(() => inventarioApi.listMovimientos()),
-    run(() => inventarioApi.listCategorias()),
-  ])
-  productos.value = prodRes.data
-  movimientos.value = movRes.data
-  categorias.value = catRes.data
+  loading.value = true
+  try {
+    const [prodRes, movRes, catRes] = await Promise.allSettled([
+      inventarioApi.listProductos(),
+      inventarioApi.listMovimientos(),
+      inventarioApi.listCategorias(),
+    ])
+    if (prodRes.status === 'fulfilled') productos.value = prodRes.value.data
+    if (movRes.status === 'fulfilled') movimientos.value = movRes.value.data
+    if (catRes.status === 'fulfilled') categorias.value = catRes.value.data
+  } finally {
+    loading.value = false
+  }
 }
 
 function openCreate() {
