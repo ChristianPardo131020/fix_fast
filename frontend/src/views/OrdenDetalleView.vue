@@ -244,32 +244,8 @@ const orden = ref(null)
 const clientes = ref([])
 const pagos = ref([])
 const historialEstados = ref([])
-const repuestosUsados = ref([])
-const allProductos = ref([])
 const notFound = ref(false)
 const activeTab = ref('resumen')
-
-const repuestoModalOpen = ref(false)
-const savingRepuesto = ref(false)
-const repuestoForm = reactive({ producto_id: '', cantidad: 1, precio_venta: 0 })
-
-const productosOptions = computed(() =>
-  allProductos.value.map(p => ({ value: p.id, label: `${p.nombre} (Stock: ${p.stock_actual})` }))
-)
-
-const selectedProducto = computed(() => {
-  return allProductos.value.find(p => p.id === Number(repuestoForm.producto_id))
-})
-
-watch(
-  () => repuestoForm.producto_id,
-  (newId) => {
-    const prod = allProductos.value.find(p => p.id === Number(newId))
-    if (prod) {
-      repuestoForm.precio_venta = prod.precio_venta
-    }
-  }
-)
 
 const cambiandoEstado = ref(false)
 const cambiandoEstadoGuardando = ref(false)
