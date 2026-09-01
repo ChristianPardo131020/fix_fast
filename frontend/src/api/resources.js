@@ -41,3 +41,17 @@ export const pagosApi = {
 export const publicApi = {
   trackOrder: (codigo, telefono) => http.get('/publico/seguimiento', { params: { codigo, telefono } }),
 }
+
+export const inventarioApi = {
+  listCategorias: () => http.get('/inventario/categorias'),
+  createCategoria: (payload) => http.post('/inventario/categorias', payload),
+  listProveedores: () => http.get('/inventario/proveedores'),
+  createProveedor: (payload) => http.post('/inventario/proveedores', payload),
+  listProductos: () => http.get('/inventario/productos'),
+  createProducto: (payload) => http.post('/inventario/productos', payload),
+  updateProducto: (id, payload) => http.put(`/inventario/productos/${id}`, payload),
+  removeProducto: (id) => http.delete(`/inventario/productos/${id}`),
+  listMovimientos: (producto_id) => http.get('/inventario/movimientos', { params: { producto_id } }),
+  registrarMovimiento: (payload) => http.post('/inventario/movimientos', payload),
+  listarBajoStock: () => http.get('/inventario/productos/bajo_stock'),
+}

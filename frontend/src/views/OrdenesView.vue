@@ -11,7 +11,7 @@
     <FabButton label="Nueva orden" @click="openCreate" />
 
     <BaseCard content-class="p-4">
-      <div class="grid gap-3 md:grid-cols-[1fr_220px]">
+      <div class="grid gap-3 md:grid-cols-[1fr_160px_130px_100px_100px]">
         <label class="relative block">
           <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
           <input v-model="search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por cliente, equipo, falla o estado" />
@@ -20,6 +20,17 @@
           <option value="">Todos los estados</option>
           <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
         </BaseInput>
+        <select v-model="selectedMonth" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+          <option :value="null">Todos los meses</option>
+          <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
+        </select>
+        <select v-model="selectedDay" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+          <option :value="null">Todos los días</option>
+          <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
+        </select>
+        <select v-model="selectedYear" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+          <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
+        </select>
       </div>
     </BaseCard>
 
@@ -85,6 +96,7 @@
         </div>
         <BaseInput v-model="form.problema" label="Falla reportada" textarea required />
         <div class="grid gap-4 sm:grid-cols-3">
+          <BaseInput v-if="editingId" v-model="form.numero_orden" label="Numero de orden" readonly />
           <BaseInput v-model="form.estado" label="Estado" type="select">
             <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
           </BaseInput>
@@ -164,14 +176,28 @@ const { loading, run } = useApiState()
 const initialLoading = ref(true)
 const ordenes = ref([])
 const clientes = ref([])
-// Precargado con ?q= cuando se llega desde el buscador global del topbar
-// (ver AppLayout.vue submitSearch).
+const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+const now = new Date()
+const selectedYear = ref(now.getFullYear())
+const selectedMonth = ref(now.getMonth() + 1)
+const selectedDay = ref(null)
+
+const availableYears = computed(() => {
+  const years = new Set([now.getFullYear()])
+  ordenes.value.forEach(orden => {
+    if (orden.fecha_ingreso) {
+      years.add(new Date(orden.fecha_ingreso).getFullYear())
+    }
+  })
+  return [...years].sort((a, b) => b - a)
+})
+
+const daysInSelectedMonth = computed(() => {
+  if (!selectedMonth.value) return 0
+  return new Date(selectedYear.value, selectedMonth.value, 0).getDate()
+})
+
 const search = ref(typeof route.query.q === 'string' ? route.query.q : '')
-// Por defecto se ve solo lo que falta atender; "Todos los estados" sigue
-// disponible en el select para el que quiera ver el historial completo.
-// Si se llega con una busqueda global (?q=), no se limita a Pendiente:
-// el buscador del topbar espera encontrar cualquier orden, no solo las
-// pendientes.
 const statusFilter = ref(search.value ? '' : 'Pendiente')
 const modalOpen = ref(false)
 const saving = ref(false)
@@ -182,7 +208,7 @@ const showNewCliente = ref(false)
 const savingCliente = ref(false)
 const newCliente = reactive({ nombre: '', telefono: '' })
 
-const form = reactive({ cliente_id: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0, abono: 0, abono_metodo_pago: 'Efectivo' })
+const form = reactive({ cliente_id: '', numero_orden: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0, abono: 0, abono_metodo_pago: 'Efectivo' })
 
 // Mapa id->cliente, se recalcula solo cuando cambia la lista de
 // clientes (no en cada letra tipeada). Con ~2300 clientes y ~3500
@@ -237,7 +263,15 @@ const filteredOrdenes = computed(() => {
       || clienteNombre(orden).toLowerCase().includes(term)
     )
     const matchesStatus = !statusFilter.value || orden.estado === statusFilter.value
-    return matchesSearch && matchesStatus
+
+    const fecha = orden.fecha_ingreso ? new Date(orden.fecha_ingreso) : null
+    if (!fecha) return false
+
+    const matchesYear = fecha.getFullYear() === selectedYear.value
+    const matchesMonth = selectedMonth.value === null || (fecha.getMonth() + 1) === selectedMonth.value
+    const matchesDay = selectedDay.value === null || fecha.getDate() === selectedDay.value
+
+    return matchesSearch && matchesStatus && matchesYear && matchesMonth && matchesDay
   })
 })
 
@@ -262,7 +296,7 @@ function clienteNombre(orden) {
 }
 
 function resetForm() {
-  Object.assign(form, { cliente_id: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0, abono: 0, abono_metodo_pago: 'Efectivo' })
+  Object.assign(form, { cliente_id: '', numero_orden: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0, abono: 0, abono_metodo_pago: 'Efectivo' })
   editingId.value = null
   showNewCliente.value = false
   Object.assign(newCliente, { nombre: '', telefono: '' })
@@ -300,6 +334,7 @@ function openEdit(orden) {
   editingId.value = orden.id
   Object.assign(form, {
     cliente_id: orden.cliente_id || orden.cliente?.id || '',
+    numero_orden: orden.numero_orden || '',
     equipo: orden.equipo || '',
     marca: orden.marca || '',
     modelo: orden.modelo || '',

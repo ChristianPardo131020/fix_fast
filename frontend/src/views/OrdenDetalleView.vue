@@ -125,7 +125,8 @@
           <BaseInput v-model="editForm.modelo" label="Modelo" />
         </div>
         <BaseInput v-model="editForm.problema" label="Falla reportada" textarea required />
-        <div class="grid gap-4 sm:grid-cols-3">
+        <div class="grid gap-4 sm:grid-cols-4">
+          <BaseInput v-model="editForm.numero_orden" label="Numero de orden" readonly />
           <BaseInput v-model="editForm.estado" label="Estado" type="select">
             <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
           </BaseInput>
@@ -207,7 +208,7 @@ const nuevoEstado = ref('')
 
 const editModalOpen = ref(false)
 const savingEdit = ref(false)
-const editForm = reactive({ cliente_id: '', equipo: '', marca: '', modelo: '', problema: '', diagnostico: '', estado: 'Pendiente', valor: 0, saldo: 0 })
+const editForm = reactive({ cliente_id: '', numero_orden: '', equipo: '', marca: '', modelo: '', problema: '', diagnostico: '', estado: 'Pendiente', valor: 0, saldo: 0 })
 
 const pagoModalOpen = ref(false)
 const savingPago = ref(false)
@@ -323,6 +324,7 @@ function ordenPayload(source) {
 function openEdit() {
   Object.assign(editForm, {
     cliente_id: orden.value.cliente_id || '',
+    numero_orden: orden.value.numero_orden || '',
     equipo: orden.value.equipo || '',
     marca: orden.value.marca || '',
     modelo: orden.value.modelo || '',

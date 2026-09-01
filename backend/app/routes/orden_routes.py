@@ -28,19 +28,20 @@ def crear_orden(
 ):
     nueva_orden = Orden(**orden.dict())
 
+    # Generar el numero de orden consecutivo
+    if not nueva_orden.numero_orden:
+        last_order = db.query(Orden.numero_orden).order_by(Orden.id.desc()).first()
+        if last_order and last_order[0] and last_order[0].isdigit():
+            next_num = max(17761, int(last_order[0]) + 1)
+        else:
+            next_num = 17761
+        nueva_orden.numero_orden = str(next_num)
+
     db.add(nueva_orden)
 
     db.commit()
 
     db.refresh(nueva_orden)
-
-    # Codigo de seguimiento amigable para que el cliente lo consulte en
-    # /publico/seguimiento sin tener que usar el id crudo de la base de
-    # datos. Se genera despues del insert porque depende del id asignado.
-    if not nueva_orden.numero_orden:
-        nueva_orden.numero_orden = f"FF-{nueva_orden.id:06d}"
-        db.commit()
-        db.refresh(nueva_orden)
 
     return nueva_orden
 
