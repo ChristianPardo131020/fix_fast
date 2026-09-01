@@ -129,6 +129,23 @@
           <option v-for="cat in categoriasIngreso" :key="cat.value" :value="cat.value">{{ cat.label }}</option>
         </BaseInput>
 
+        <!-- Vincular con inventario -->
+        <label v-if="origenTipo === 'categoria'" class="flex items-center gap-2.5 cursor-pointer select-none">
+          <input v-model="vincularInventario" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-900" />
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Vincular con producto del inventario</span>
+        </label>
+
+        <template v-if="origenTipo === 'categoria' && vincularInventario">
+          <ComboSelect
+            v-model="form.producto_id"
+            label="Producto"
+            placeholder="Buscar producto..."
+            :options="productosOptions"
+            required
+          />
+          <BaseInput v-model="form.cantidad" label="Cantidad" type="number" required />
+        </template>
+
         <div class="grid gap-4 sm:grid-cols-2">
           <BaseInput v-model="form.valor" label="Valor" type="number" required />
           <BaseInput v-model="form.metodo_pago" label="Metodo de pago" type="select">
@@ -153,7 +170,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import BaseButton from '../components/BaseButton.vue'
@@ -166,7 +183,7 @@ import EmptyState from '../components/EmptyState.vue'
 import FabButton from '../components/FabButton.vue'
 import PageHeader from '../components/PageHeader.vue'
 import StatCard from '../components/StatCard.vue'
-import { ordenesApi, pagosApi } from '../api/resources'
+import { ordenesApi, pagosApi, inventarioApi } from '../api/resources'
 import { movimientosCajaApi } from '../api/movimientosCajaApi'
 import { categoriasApi } from '../api/categoriasApi'
 import { useApiState } from '../composables/useApiState'
@@ -186,6 +203,8 @@ const categoriasDinamicas = ref([])
 const modalOpen = ref(false)
 const saving = ref(false)
 const origenTipo = ref('orden')
+const vincularInventario = ref(false)
+const productosInventario = ref([])
 
 const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const now = new Date()
@@ -194,7 +213,7 @@ const selectedMonth = ref(now.getMonth() + 1)
 const selectedDay = ref(now.getDate())
 
 const filters = reactive({ search: '', origen: '' })
-const form = reactive({ orden_id: '', categoria: 'venta', valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
+const form = reactive({ orden_id: '', categoria: 'venta', valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '', producto_id: '', cantidad: 1 })
 
 const availableYears = computed(() => {
   const years = new Set([now.getFullYear()])
@@ -251,6 +270,28 @@ const ordenOptions = computed(() =>
     sublabel: [orden.marca, orden.numero_orden].filter(Boolean).join(' · '),
   })),
 )
+
+const productosOptions = computed(() =>
+  productosInventario.value
+    .filter(p => p.stock_actual > 0)
+    .map(p => ({
+      value: p.id,
+      label: `${p.nombre}${p.codigo_sku ? ` (${p.codigo_sku})` : ''} — Stock: ${p.stock_actual}`,
+    }))
+)
+
+// Auto-llenar valor al seleccionar producto
+watch(() => form.producto_id, (nuevoId) => {
+  if (!vincularInventario.value || !nuevoId) return
+  const prod = productosInventario.value.find(p => Number(p.id) === Number(nuevoId))
+  if (prod) form.valor = prod.precio_venta * (form.cantidad || 1)
+})
+
+watch(() => form.cantidad, (nuevaCant) => {
+  if (!vincularInventario.value || !form.producto_id) return
+  const prod = productosInventario.value.find(p => Number(p.id) === Number(form.producto_id))
+  if (prod) form.valor = prod.precio_venta * (nuevaCant || 1)
+})
 
 const unifiedRows = computed(() => {
   const pagoRows = pagos.value.map((pago) => {
@@ -348,7 +389,8 @@ const origenBars = computed(() => {
 
 function resetForm() {
   const defaultCat = categoriasIngreso.value.length ? categoriasIngreso.value[0].value : 'venta'
-  Object.assign(form, { orden_id: '', categoria: defaultCat, valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
+  vincularInventario.value = false
+  Object.assign(form, { orden_id: '', categoria: defaultCat, valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '', producto_id: '', cantidad: 1 })
 }
 
 function openCreate() {
@@ -358,16 +400,18 @@ function openCreate() {
 }
 
 async function loadData() {
-  const [pagosResponse, movimientosResponse, ordenesResponse, catResponse] = await Promise.all([
+  const [pagosResponse, movimientosResponse, ordenesResponse, catResponse, prodResponse] = await Promise.all([
     run(() => pagosApi.list()),
     run(() => movimientosCajaApi.list()),
     run(() => ordenesApi.list()),
-    run(() => categoriasApi.list('ingreso'))
+    run(() => categoriasApi.list('ingreso')),
+    run(() => inventarioApi.listProductos()),
   ])
   pagos.value = pagosResponse.data
   movimientosIngreso.value = movimientosResponse.data.filter((mov) => mov.tipo === 'ingreso')
   ordenes.value = ordenesResponse.data
   categoriasDinamicas.value = catResponse.data
+  productosInventario.value = prodResponse.data
 }
 
 async function saveIngreso() {
@@ -390,6 +434,18 @@ async function saveIngreso() {
         metodo_pago: form.metodo_pago,
         descripcion: form.observaciones,
       }), 'Ingreso registrado')
+
+      // Descontar stock si se vinculó con un producto del inventario
+      if (vincularInventario.value && form.producto_id) {
+        const prod = productosInventario.value.find(p => Number(p.id) === Number(form.producto_id))
+        await run(() => inventarioApi.registrarMovimiento({
+          producto_id: Number(form.producto_id),
+          tipo: 'salida',
+          cantidad: Number(form.cantidad || 1),
+          valor_unitario: prod ? prod.precio_venta : Number(form.valor || 0),
+          motivo: `Venta mostrador: ${form.observaciones || form.categoria}`,
+        }))
+      }
     }
     modalOpen.value = false
     await loadData()
