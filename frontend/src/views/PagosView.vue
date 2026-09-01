@@ -190,7 +190,7 @@ import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 import { useUiStore } from '../stores/ui'
 
-const { formatCurrency, formatDate, formatNumber } = useFormatters()
+const { formatCurrency, formatDate, formatNumber, parseUTC } = useFormatters()
 const { loading, run } = useApiState()
 const ui = useUiStore()
 const route = useRoute()
@@ -218,9 +218,8 @@ const form = reactive({ orden_id: '', categoria: 'venta', valor: 0, metodo_pago:
 const availableYears = computed(() => {
   const years = new Set([now.getFullYear()])
   unifiedRows.value.forEach(row => {
-    if (row.fecha) {
-      years.add(new Date(row.fecha).getFullYear())
-    }
+    const d = parseUTC(row.fecha)
+    if (d) years.add(d.getFullYear())
   })
   return [...years].sort((a, b) => b - a)
 })
@@ -326,7 +325,7 @@ const unifiedRows = computed(() => {
     raw: mov,
   }))
 
-  return [...pagoRows, ...ingresoRows].sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0))
+  return [...pagoRows, ...ingresoRows].sort((a, b) => (parseUTC(b.fecha) || 0) - (parseUTC(a.fecha) || 0))
 })
 
 const filteredRows = computed(() => {
@@ -340,7 +339,7 @@ const filteredRows = computed(() => {
     )
     const matchesOrigen = !filters.origen || row.categoria === filters.origen
 
-    const fecha = row.fecha ? new Date(row.fecha) : null
+    const fecha = parseUTC(row.fecha)
     if (!fecha) return false
 
     const matchesYear = fecha.getFullYear() === selectedYear.value

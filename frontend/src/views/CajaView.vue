@@ -107,7 +107,7 @@ import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 import { useUiStore } from '../stores/ui'
 
-const { formatCurrency, formatNumber } = useFormatters()
+const { formatCurrency, formatNumber, parseUTC } = useFormatters()
 const { loading, run } = useApiState()
 const ui = useUiStore()
 const route = useRoute()
@@ -138,9 +138,8 @@ const filters = reactive({ search: '', categoria: '' })
 const availableYears = computed(() => {
   const years = new Set([now.getFullYear()])
   movimientos.value.forEach(m => {
-    if (m.created_at) {
-      years.add(new Date(m.created_at).getFullYear())
-    }
+    const d = parseUTC(m.created_at)
+    if (d) years.add(d.getFullYear())
   })
   return [...years].sort((a, b) => b - a)
 })
@@ -162,7 +161,7 @@ const filteredMovimientos = computed(() => {
     const matchesTipo = movimiento.tipo === 'egreso'
     const matchesCategoria = !filters.categoria || movimiento.categoria === filters.categoria
 
-    const fecha = movimiento.created_at ? new Date(movimiento.created_at) : null
+    const fecha = parseUTC(movimiento.created_at)
     if (!fecha) return false
 
     const matchesYear = fecha.getFullYear() === selectedYear.value

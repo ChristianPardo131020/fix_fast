@@ -63,7 +63,7 @@
             {{ value || '-' }}
           </template>
           <template #created_at="{ value }">
-            {{ new Date(value).toLocaleDateString() }}
+            {{ formatDate(value) }}
           </template>
         </BaseTable>
       </BaseCard>
@@ -134,7 +134,7 @@ import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 import { useUiStore } from '../stores/ui'
 
-const { formatCurrency } = useFormatters()
+const { formatCurrency, formatDate } = useFormatters()
 const { loading, run } = useApiState()
 const saving = ref(false)
 const ui = useUiStore()

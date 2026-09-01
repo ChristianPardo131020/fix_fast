@@ -15,7 +15,7 @@ anterior" sea siempre entre rangos equivalentes.
 """
 
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy import func
@@ -26,6 +26,15 @@ from app.models.historial_estado import HistorialEstado
 from app.models.movimiento_caja import MovimientoCaja
 from app.models.orden import Orden
 from app.models.pago import Pago
+
+# --- Zona horaria del negocio ---
+# Supabase CURRENT_TIMESTAMP guarda UTC. El negocio opera en hora
+# colombiana (UTC-5). Para que "hoy" en el dashboard corresponda al día
+# del taller, los límites del periodo se convierten a UTC usando este
+# offset — así un registro a las 10 PM COL (= 3 AM UTC del día
+# siguiente) cae correctamente en "hoy".
+_COL_OFFSET = timedelta(hours=-5)
+_COL_TZ = timezone(_COL_OFFSET)
 
 # --- Umbrales de alertas (todas se disparan solas, no hay texto fijo) ---
 DIAS_SIN_MOVIMIENTO = 5
@@ -62,11 +71,14 @@ def _pct(value) -> Decimal:
 
 @dataclass(frozen=True)
 class Periodo:
-    inicio: date
-    fin: date  # exclusivo
-    inicio_anterior: date
-    fin_anterior: date  # exclusivo, siempre == inicio
+    inicio: datetime    # UTC datetime que corresponde a medianoche COL
+    fin: datetime       # exclusivo
+    inicio_anterior: datetime
+    fin_anterior: datetime  # exclusivo, siempre == inicio
     label: str
+    # Fechas de negocio originales (para labels y orden por fecha_ingreso)
+    inicio_date: date = None
+    fin_date: date = None
 
 
 _MESES = [
@@ -75,27 +87,42 @@ _MESES = [
 ]
 
 
+def _col_midnight_utc(d: date) -> datetime:
+    """Medianoche de `d` en hora colombiana, convertida a UTC naive
+    (para comparar contra columnas TIMESTAMP sin tz de Supabase)."""
+    return datetime.combine(d, time.min) - _COL_OFFSET
+
+
 def resolver_periodo(year: int, month: int | None, day: int | None = None) -> Periodo:
     if month is None:
-        inicio = date(year, 1, 1)
-        fin = date(year + 1, 1, 1)
-        inicio_anterior = date(year - 1, 1, 1)
+        inicio_d = date(year, 1, 1)
+        fin_d = date(year + 1, 1, 1)
+        inicio_ant_d = date(year - 1, 1, 1)
         label = f"Todo {year}"
     elif day is None:
-        inicio = date(year, month, 1)
-        fin = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+        inicio_d = date(year, month, 1)
+        fin_d = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
         if month == 1:
-            inicio_anterior = date(year - 1, 12, 1)
+            inicio_ant_d = date(year - 1, 12, 1)
         else:
-            inicio_anterior = date(year, month - 1, 1)
+            inicio_ant_d = date(year, month - 1, 1)
         label = f"{_MESES[month - 1]} {year}"
     else:
-        inicio = date(year, month, day)
-        fin = inicio + timedelta(days=1)
-        inicio_anterior = inicio - timedelta(days=1)
+        inicio_d = date(year, month, day)
+        fin_d = inicio_d + timedelta(days=1)
+        inicio_ant_d = inicio_d - timedelta(days=1)
         label = f"{day} de {_MESES[month - 1]} {year}"
 
-    return Periodo(inicio=inicio, fin=fin, inicio_anterior=inicio_anterior, fin_anterior=inicio, label=label)
+    inicio = _col_midnight_utc(inicio_d)
+    fin = _col_midnight_utc(fin_d)
+    inicio_anterior = _col_midnight_utc(inicio_ant_d)
+
+    return Periodo(
+        inicio=inicio, fin=fin,
+        inicio_anterior=inicio_anterior, fin_anterior=inicio,
+        label=label,
+        inicio_date=inicio_d, fin_date=fin_d,
+    )
 
 
 def _variacion(actual: Decimal, anterior: Decimal) -> tuple[Decimal | None, str]:
@@ -127,7 +154,7 @@ def _metric_int(actual: int, anterior: int) -> dict:
 # Bloques de calculo, cada uno recibe el rango de fechas que necesita
 # --------------------------------------------------------------------------
 
-def _estado_counts(db: Session, inicio: date, fin: date) -> dict[str, int]:
+def _estado_counts(db: Session, inicio: datetime, fin: datetime) -> dict[str, int]:
     """Cuenta ordenes por estado canonico dentro de [inicio, fin).
 
     Se agrupa por el string crudo en SQL (GROUP BY, agregado — no trae
@@ -150,7 +177,7 @@ def _estado_counts(db: Session, inicio: date, fin: date) -> dict[str, int]:
     return counts
 
 
-def _ingresos_egresos(db: Session, inicio: date, fin: date) -> tuple[Decimal, Decimal]:
+def _ingresos_egresos(db: Session, inicio: datetime, fin: datetime) -> tuple[Decimal, Decimal]:
     pagos = db.query(func.coalesce(func.sum(Pago.valor), 0)).filter(
         Pago.created_at >= inicio, Pago.created_at < fin
     ).scalar()
@@ -166,7 +193,7 @@ def _ingresos_egresos(db: Session, inicio: date, fin: date) -> tuple[Decimal, De
     return Decimal(pagos) + Decimal(otros_ingresos), Decimal(egresos)
 
 
-def _saldo_pendiente(db: Session, inicio: date, fin: date) -> Decimal:
+def _saldo_pendiente(db: Session, inicio: datetime, fin: datetime) -> Decimal:
     total = db.query(func.coalesce(func.sum(Orden.saldo), 0)).filter(
         Orden.fecha_ingreso >= inicio, Orden.fecha_ingreso < fin
     ).scalar()
@@ -235,9 +262,14 @@ def _iter_buckets(inicio: date, fin: date, granularidad: str):
 
 
 def _bucketed_sum(db: Session, modelo, columna_valor, columna_fecha, filtros, granularidad: str) -> dict[date, Decimal]:
+    from sqlalchemy import literal_column
+    # Shift UTC → Colombia (UTC-5) before date_trunc so that a record at
+    # 00:30 UTC (= 7:30 PM COL del dia anterior) caiga en el bucket del
+    # dia correcto de negocio, no en el UTC.
+    col_local = columna_fecha + literal_column("INTERVAL '-5 hours'")
     filas = (
         db.query(
-            func.date_trunc(granularidad, columna_fecha).label("bucket"),
+            func.date_trunc(granularidad, col_local).label("bucket"),
             func.coalesce(func.sum(columna_valor), 0).label("total"),
         )
         .filter(*filtros)
@@ -265,7 +297,7 @@ def _cashflow(db: Session, periodo: Periodo, granularidad: str) -> dict:
 
     puntos = []
     acumulado = Decimal(0)
-    for bucket in _iter_buckets(periodo.inicio, periodo.fin, granularidad):
+    for bucket in _iter_buckets(periodo.inicio_date, periodo.fin_date, granularidad):
         ingresos = pagos_por_bucket.get(bucket, Decimal(0)) + otros_ingresos_por_bucket.get(bucket, Decimal(0))
         egresos = egresos_por_bucket.get(bucket, Decimal(0))
         utilidad = ingresos - egresos
@@ -400,7 +432,7 @@ def _performance(db: Session, periodo: Periodo) -> dict:
         return Decimal(pagos) + Decimal(ingresos_otros) - Decimal(egresos)
 
     saldo_disponible_ahora = saldo_disponible_hasta(datetime.utcnow())
-    saldo_disponible_inicio_periodo = saldo_disponible_hasta(datetime.combine(periodo.inicio, datetime.min.time()))
+    saldo_disponible_inicio_periodo = saldo_disponible_hasta(periodo.inicio)
 
     return {
         "tiempo_promedio_reparacion_dias": _metric(tiempo_actual, tiempo_anterior),
@@ -538,8 +570,8 @@ def build_dashboard(db: Session, year: int, month: int | None, day: int | None, 
             "month": month,
             "day": day,
             "label": periodo.label,
-            "inicio": periodo.inicio.isoformat(),
-            "fin": (periodo.fin - timedelta(days=1)).isoformat(),
+            "inicio": periodo.inicio_date.isoformat(),
+            "fin": (periodo.fin_date - timedelta(days=1)).isoformat(),
         },
         "kpis": kpis,
         "cashflow": _cashflow(db, periodo, granularidad),
