@@ -96,7 +96,7 @@
         </div>
         <BaseInput v-model="form.problema" label="Falla reportada" textarea required />
         <div class="grid gap-4 sm:grid-cols-3">
-          <BaseInput v-if="editingId" v-model="form.numero_orden" label="Numero de orden" readonly />
+          <BaseInput v-model="form.numero_orden" label="Numero de orden" readonly :hint="editingId ? '' : 'Consecutivo automático'" />
           <BaseInput v-model="form.estado" label="Estado" type="select">
             <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
           </BaseInput>
@@ -325,9 +325,16 @@ async function saveNewCliente() {
   }
 }
 
-function openCreate() {
+async function openCreate() {
   resetForm()
   modalOpen.value = true
+  // Cargar el siguiente número de orden para mostrarlo antes de guardar
+  try {
+    const res = await ordenesApi.siguienteNumero()
+    form.numero_orden = res.data.numero_orden
+  } catch {
+    form.numero_orden = '—'
+  }
 }
 
 function openEdit(orden) {

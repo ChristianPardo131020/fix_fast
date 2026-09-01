@@ -23,6 +23,17 @@ router = APIRouter(
     dependencies=[Depends(get_current_user)]
 )
 
+# siguiente numero de orden (para mostrarlo en el formulario antes de guardar)
+@router.get("/siguiente-numero")
+def siguiente_numero(db: Session = Depends(get_db)):
+    last_order = db.query(Orden.numero_orden).order_by(Orden.id.desc()).first()
+    if last_order and last_order[0] and last_order[0].isdigit():
+        next_num = max(17761, int(last_order[0]) + 1)
+    else:
+        next_num = 17761
+    return {"numero_orden": str(next_num)}
+
+
 # crear orden
 @router.post("/", response_model=OrdenResponse)
 
@@ -30,16 +41,19 @@ def crear_orden(
     orden: OrdenCreate,
     db: Session = Depends(get_db)
 ):
-    nueva_orden = Orden(**orden.dict())
+    datos = orden.dict()
+    # Ignorar numero_orden del frontend — siempre se genera en el backend
+    # para garantizar el consecutivo único incluso con concurrencia.
+    datos.pop("numero_orden", None)
+    nueva_orden = Orden(**datos)
 
     # Generar el numero de orden consecutivo
-    if not nueva_orden.numero_orden:
-        last_order = db.query(Orden.numero_orden).order_by(Orden.id.desc()).first()
-        if last_order and last_order[0] and last_order[0].isdigit():
-            next_num = max(17761, int(last_order[0]) + 1)
-        else:
-            next_num = 17761
-        nueva_orden.numero_orden = str(next_num)
+    last_order = db.query(Orden.numero_orden).order_by(Orden.id.desc()).first()
+    if last_order and last_order[0] and last_order[0].isdigit():
+        next_num = max(17761, int(last_order[0]) + 1)
+    else:
+        next_num = 17761
+    nueva_orden.numero_orden = str(next_num)
 
     db.add(nueva_orden)
 
