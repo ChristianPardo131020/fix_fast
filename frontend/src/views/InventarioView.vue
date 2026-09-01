@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <PageHeader title="Inventario" subtitle="Gestión de productos, stock, proveedores y movimiento de mercancía.">
+    <PageHeader title="Inventario" subtitle="Gestión de productos, stock y movimiento de mercancía.">
       <template #actions>
         <BaseButton icon="plus" @click="openCreate">Nuevo producto</BaseButton>
       </template>
@@ -53,20 +53,6 @@
       </BaseCard>
     </section>
 
-    <!-- Categorías -->
-    <section v-if="activeTab === 'categorias'">
-      <BaseCard content-class="p-4">
-        <BaseTable :columns="[{ key: 'nombre', label: 'Nombre' }]" :rows="categorias" :loading="loading" />
-      </BaseCard>
-    </section>
-
-    <!-- Proveedores -->
-    <section v-if="activeTab === 'proveedores'">
-      <BaseCard content-class="p-4">
-        <BaseTable :columns="[{ key: 'nombre', label: 'Nombre' }, { key: 'telefono', label: 'Teléfono' }, { key: 'email', label: 'Email' }]" :rows="proveedores" :loading="loading" />
-      </BaseCard>
-    </section>
-
     <!-- Modal Producto -->
     <BaseModal v-model="modalOpen" title="Nuevo producto" subtitle="Registro de producto en inventario.">
       <form class="grid gap-4" @submit.prevent="saveProducto">
@@ -108,14 +94,11 @@ const ui = useUiStore()
 const tabs = [
   { key: 'productos', label: 'Productos' },
   { key: 'movimientos', label: 'Movimientos (Kardex)' },
-  { key: 'categorias', label: 'Categorías' },
-  { key: 'proveedores', label: 'Proveedores' },
 ]
 const activeTab = ref('productos')
 const productos = ref([])
 const movimientos = ref([])
 const categorias = ref([])
-const proveedores = ref([])
 const modalOpen = ref(false)
 
 const form = reactive({ nombre: '', codigo_sku: '', precio_compra: 0, precio_venta: 0, stock_minimo: 0, categoria_id: '' })
@@ -139,16 +122,14 @@ const movimientoColumns = [
 ]
 
 async function loadData() {
-  const [prodRes, movRes, catRes, provRes] = await Promise.all([
+  const [prodRes, movRes, catRes] = await Promise.all([
     run(() => inventarioApi.listProductos()),
     run(() => inventarioApi.listMovimientos()),
     run(() => inventarioApi.listCategorias()),
-    run(() => inventarioApi.listProveedores())
   ])
   productos.value = prodRes.data
   movimientos.value = movRes.data
   categorias.value = catRes.data
-  proveedores.value = provRes.data
 }
 
 function openCreate() {
