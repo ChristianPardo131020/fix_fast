@@ -58,7 +58,7 @@
       <form class="grid gap-4" @submit.prevent="saveProducto">
         <BaseInput v-model="form.nombre" label="Nombre" required />
         <div class="grid grid-cols-2 gap-4">
-          <BaseInput v-model="form.codigo_sku" label="SKU" />
+          <BaseInput v-model="form.codigo_sku" label="SKU" :placeholder="form.id ? '' : 'Automático'" />
           <ComboSelect v-model="form.categoria_id" label="Categoría" :options="categoriaOptions" required />
         </div>
         <div class="grid grid-cols-2 gap-4">

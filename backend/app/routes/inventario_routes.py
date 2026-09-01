@@ -49,9 +49,19 @@ def listar_proveedores(db: Session = Depends(get_db)):
     return db.query(Proveedor).order_by(Proveedor.nombre).all()
 
 # -- Productos --
+def _generar_sku(db: Session) -> str:
+    """Genera un SKU secuencial tipo PROD-0001."""
+    ultimo = (
+        db.query(func.max(Producto.id)).scalar() or 0
+    )
+    return f"PROD-{ultimo + 1:04d}"
+
 @router.post("/productos", response_model=ProductoResponse)
 def crear_producto(producto: ProductoCreate, db: Session = Depends(get_db)):
-    nuevo = Producto(**producto.dict())
+    datos = producto.dict()
+    if not datos.get("codigo_sku"):
+        datos["codigo_sku"] = _generar_sku(db)
+    nuevo = Producto(**datos)
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
