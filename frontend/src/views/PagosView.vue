@@ -426,7 +426,17 @@ async function saveIngreso() {
         referencia_pago: form.referencia_pago,
         observaciones: form.observaciones,
       }), 'Pago registrado')
+    } else if (vincularInventario.value && form.producto_id) {
+      // Venta vinculada con inventario → endpoint atómico (Kardex + caja + stock)
+      await run(() => inventarioApi.registrarVenta({
+        producto_id: Number(form.producto_id),
+        cantidad: Number(form.cantidad || 1),
+        precio_venta: Number(form.valor || 0) / Number(form.cantidad || 1),
+        metodo_pago: form.metodo_pago,
+        descripcion: form.observaciones || form.categoria,
+      }), 'Venta registrada — stock, Kardex e ingreso actualizados')
     } else {
+      // Ingreso sin inventario (servicio rápido, etc.)
       await run(() => movimientosCajaApi.create({
         tipo: 'ingreso',
         categoria: form.categoria,
@@ -434,18 +444,6 @@ async function saveIngreso() {
         metodo_pago: form.metodo_pago,
         descripcion: form.observaciones,
       }), 'Ingreso registrado')
-
-      // Descontar stock si se vinculó con un producto del inventario
-      if (vincularInventario.value && form.producto_id) {
-        const prod = productosInventario.value.find(p => Number(p.id) === Number(form.producto_id))
-        await run(() => inventarioApi.registrarMovimiento({
-          producto_id: Number(form.producto_id),
-          tipo: 'salida',
-          cantidad: Number(form.cantidad || 1),
-          valor_unitario: prod ? prod.precio_venta : Number(form.valor || 0),
-          motivo: `Venta mostrador: ${form.observaciones || form.categoria}`,
-        }))
-      }
     }
     modalOpen.value = false
     await loadData()

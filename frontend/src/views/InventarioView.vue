@@ -1,8 +1,11 @@
 <template>
   <div class="space-y-6">
-    <PageHeader title="Inventario" subtitle="Gestión de productos, stock y movimiento de mercancía.">
+    <PageHeader title="Inventario" subtitle="Gestión de productos, stock, compras y movimiento de mercancía.">
       <template #actions>
-        <BaseButton icon="plus" @click="openCreate">Nuevo producto</BaseButton>
+        <div class="flex items-center gap-2">
+          <BaseButton variant="secondary" icon="plus" @click="openCompra">Registrar compra</BaseButton>
+          <BaseButton icon="plus" @click="openCreate">Nuevo producto</BaseButton>
+        </div>
       </template>
     </PageHeader>
 
@@ -46,6 +49,19 @@
           <template #producto_id="{ row }">
             {{ row.producto ? row.producto.nombre : 'ID: ' + row.producto_id }}
           </template>
+          <template #tipo="{ value }">
+            <span
+              class="rounded-full px-2.5 py-1 text-xs font-semibold capitalize"
+              :class="{
+                'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300': value === 'entrada',
+                'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300': value === 'salida',
+                'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300': value === 'ajuste' || value === 'merma',
+              }"
+            >{{ value }}</span>
+          </template>
+          <template #motivo="{ value }">
+            {{ value || '-' }}
+          </template>
           <template #created_at="{ value }">
             {{ new Date(value).toLocaleDateString() }}
           </template>
@@ -72,11 +88,40 @@
         <BaseButton type="submit" :loading="saving">Guardar</BaseButton>
       </form>
     </BaseModal>
+
+    <!-- Modal Compra -->
+    <BaseModal v-model="compraModalOpen" title="Registrar compra" subtitle="Compra de producto: suma stock, registra en Kardex y genera egreso en caja.">
+      <form class="grid gap-4" @submit.prevent="saveCompra">
+        <ComboSelect v-model="compraForm.producto_id" label="Producto" :options="productosOptions" required />
+        <div class="grid grid-cols-2 gap-4">
+          <BaseInput v-model="compraForm.cantidad" label="Cantidad" type="number" required min="1" />
+          <BaseInput v-model="compraForm.valor_unitario" label="Costo unitario" type="number" required />
+        </div>
+        <div class="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
+          <p class="text-sm text-slate-600 dark:text-slate-300">
+            Total egreso: <strong class="text-slate-950 dark:text-white">{{ formatCurrency(compraTotal) }}</strong>
+          </p>
+        </div>
+        <BaseInput v-model="compraForm.metodo_pago" label="Método de pago" type="select">
+          <option value="Efectivo">Efectivo</option>
+          <option value="Transferencia">Transferencia</option>
+          <option value="Nequi">Nequi</option>
+          <option value="Daviplata">Daviplata</option>
+          <option value="Tarjeta">Tarjeta</option>
+          <option value="Otro">Otro</option>
+        </BaseInput>
+        <BaseInput v-model="compraForm.descripcion" label="Descripción" placeholder="Ej. Compra a proveedor X" textarea />
+        <div class="flex justify-end gap-2">
+          <BaseButton variant="secondary" @click="compraModalOpen = false">Cancelar</BaseButton>
+          <BaseButton type="submit" :loading="savingCompra">Registrar compra</BaseButton>
+        </div>
+      </form>
+    </BaseModal>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
 import BaseTable from '../components/BaseTable.vue'
@@ -104,10 +149,18 @@ const movimientos = ref([])
 const categorias = ref([])
 const modalOpen = ref(false)
 
+// --- Producto ---
 const form = reactive({ nombre: '', codigo_sku: '', precio_compra: 0, precio_venta: 0, stock_actual: 0, stock_minimo: 0, categoria_id: '' })
 
 const categoriaOptions = computed(() =>
   categorias.value.map(c => ({ value: c.id, label: c.nombre }))
+)
+
+const productosOptions = computed(() =>
+  productos.value.map(p => ({
+    value: p.id,
+    label: `${p.nombre}${p.codigo_sku ? ` (${p.codigo_sku})` : ''} — Stock: ${p.stock_actual}`,
+  }))
 )
 
 const productoColumns = [
@@ -122,8 +175,22 @@ const movimientoColumns = [
   { key: 'producto_id', label: 'Producto' },
   { key: 'tipo', label: 'Tipo' },
   { key: 'cantidad', label: 'Cantidad' },
+  { key: 'motivo', label: 'Motivo' },
   { key: 'created_at', label: 'Fecha' },
 ]
+
+// --- Compra ---
+const compraModalOpen = ref(false)
+const savingCompra = ref(false)
+const compraForm = reactive({ producto_id: '', cantidad: 1, valor_unitario: 0, metodo_pago: 'Efectivo', descripcion: '' })
+
+const compraTotal = computed(() => Number(compraForm.cantidad || 0) * Number(compraForm.valor_unitario || 0))
+
+// Auto-llenar costo unitario con precio_compra del producto
+watch(() => compraForm.producto_id, (nuevoId) => {
+  const prod = productos.value.find(p => Number(p.id) === Number(nuevoId))
+  if (prod) compraForm.valor_unitario = prod.precio_compra || 0
+})
 
 async function loadData() {
   const [prodRes, movRes, catRes] = await Promise.all([
@@ -184,6 +251,32 @@ async function removeProducto(prod) {
 
   await run(() => inventarioApi.removeProducto(prod.id), 'Producto eliminado')
   await loadData()
+}
+
+function openCompra() {
+  compraForm.producto_id = ''
+  compraForm.cantidad = 1
+  compraForm.valor_unitario = 0
+  compraForm.metodo_pago = 'Efectivo'
+  compraForm.descripcion = ''
+  compraModalOpen.value = true
+}
+
+async function saveCompra() {
+  savingCompra.value = true
+  try {
+    await run(() => inventarioApi.registrarCompra({
+      producto_id: Number(compraForm.producto_id),
+      cantidad: Number(compraForm.cantidad),
+      valor_unitario: Number(compraForm.valor_unitario),
+      metodo_pago: compraForm.metodo_pago,
+      descripcion: compraForm.descripcion,
+    }), 'Compra registrada — stock, Kardex y egreso actualizados')
+    compraModalOpen.value = false
+    await loadData()
+  } finally {
+    savingCompra.value = false
+  }
 }
 
 onMounted(loadData)

@@ -282,6 +282,49 @@ watch(() => repuestoForm.producto_id, (nuevoId) => {
   if (prod) repuestoForm.precio_venta = prod.precio_venta || 0
 })
 
+// --- Funciones de repuestos ---
+async function loadRepuestos() {
+  const res = await ordenesApi.listRepuestos(props.id)
+  repuestosUsados.value = res.data
+}
+
+async function loadProductos() {
+  const res = await inventarioApi.listProductos()
+  productosInventario.value = res.data
+}
+
+function openAgregarRepuesto() {
+  repuestoForm.producto_id = ''
+  repuestoForm.cantidad = 1
+  repuestoForm.precio_venta = 0
+  repuestoModalOpen.value = true
+}
+
+async function saveRepuesto() {
+  savingRepuesto.value = true
+  try {
+    await run(() => ordenesApi.addRepuesto(props.id, {
+      producto_id: Number(repuestoForm.producto_id),
+      cantidad: Number(repuestoForm.cantidad),
+      precio_venta: Number(repuestoForm.precio_venta),
+    }), 'Repuesto agregado')
+    repuestoModalOpen.value = false
+    await Promise.all([loadRepuestos(), loadProductos()])
+  } finally {
+    savingRepuesto.value = false
+  }
+}
+
+async function removeRepuesto(repuesto) {
+  const confirmed = await ui.confirm({
+    title: `Eliminar repuesto "${repuesto.producto?.nombre || 'Producto'}"`,
+    message: 'Se devolverá el stock al inventario.',
+  })
+  if (!confirmed) return
+  await run(() => ordenesApi.removeRepuesto(props.id, repuesto.id), 'Repuesto eliminado')
+  await Promise.all([loadRepuestos(), loadProductos()])
+}
+
 const clienteNombre = computed(() => {
   if (!orden.value) return 'Cliente'
   const cliente = clientes.value.find((item) => Number(item.id) === Number(orden.value.cliente_id))
@@ -461,7 +504,7 @@ onMounted(async () => {
     return
   }
 
-  const [clientesResult] = await Promise.allSettled([run(() => clientesApi.list()), loadPagos(), loadHistorial()])
+  const [clientesResult] = await Promise.allSettled([run(() => clientesApi.list()), loadPagos(), loadHistorial(), loadRepuestos(), loadProductos()])
   if (clientesResult.status === 'fulfilled') {
     clientes.value = clientesResult.value.data
   }

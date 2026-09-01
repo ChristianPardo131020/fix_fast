@@ -57,4 +57,6 @@ export const inventarioApi = {
   listMovimientos: (producto_id) => http.get('/inventario/movimientos', { params: { producto_id } }),
   registrarMovimiento: (payload) => http.post('/inventario/movimientos', payload),
   listarBajoStock: () => http.get('/inventario/productos/bajo_stock'),
+  registrarCompra: (payload) => http.post('/inventario/compras', payload),
+  registrarVenta: (payload) => http.post('/inventario/ventas', payload),
 }

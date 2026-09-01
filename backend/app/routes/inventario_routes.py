@@ -3,18 +3,40 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
 
+from pydantic import BaseModel
+
 from app.database import get_db
 from app.auth.dependencies import get_current_user
 from app.models.producto import Producto
 from app.models.categoria_inventario import CategoriaInventario
 from app.models.proveedor import Proveedor
 from app.models.movimiento_inventario import MovimientoInventario
+from app.models.movimiento_caja import MovimientoCaja
 from app.models.orden import Orden
 
 from app.schemas.producto_schema import ProductoCreate, ProductoResponse
 from app.schemas.categoria_inventario_schema import CategoriaInventarioCreate, CategoriaInventarioResponse
 from app.schemas.proveedor_schema import ProveedorCreate, ProveedorResponse
 from app.schemas.movimiento_inventario_schema import MovimientoInventarioCreate, MovimientoInventarioResponse
+
+
+# --- Schemas para operaciones integradas ---
+
+class CompraInventarioCreate(BaseModel):
+    """Compra de producto: entrada en Kardex + egreso en caja."""
+    producto_id: int
+    cantidad: int
+    valor_unitario: float
+    metodo_pago: str = "Efectivo"
+    descripcion: Optional[str] = None
+
+class VentaMostradorCreate(BaseModel):
+    """Venta de mostrador: salida en Kardex + ingreso en caja."""
+    producto_id: int
+    cantidad: int
+    precio_venta: float
+    metodo_pago: str = "Efectivo"
+    descripcion: Optional[str] = None
 
 router = APIRouter(
     prefix="/inventario",
@@ -144,3 +166,108 @@ def listar_movimientos(producto_id: Optional[int] = None, db: Session = Depends(
 @router.get("/productos/bajo_stock", response_model=List[ProductoResponse])
 def listar_bajo_stock(db: Session = Depends(get_db)):
     return db.query(Producto).filter(Producto.stock_actual <= Producto.stock_minimo).all()
+
+
+# ---------------------------------------------------------------
+# Operaciones integradas: Inventario + Kardex + Finanzas (atómicas)
+# ---------------------------------------------------------------
+
+@router.post("/compras")
+def registrar_compra(compra: CompraInventarioCreate, db: Session = Depends(get_db)):
+    """
+    Compra de producto (ej. compra de repuestos a proveedor).
+    En una sola transacción:
+      1. Aumenta stock del producto
+      2. Crea movimiento de inventario tipo 'entrada' (Kardex)
+      3. Crea movimiento de caja tipo 'egreso' (finanzas)
+    """
+    producto = db.query(Producto).filter(Producto.id == compra.producto_id).first()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    total = compra.cantidad * compra.valor_unitario
+
+    # 1. Aumentar stock
+    producto.stock_actual += compra.cantidad
+
+    # 2. Kardex — entrada
+    mov_inventario = MovimientoInventario(
+        producto_id=compra.producto_id,
+        tipo="entrada",
+        cantidad=compra.cantidad,
+        valor_unitario=compra.valor_unitario,
+        motivo=compra.descripcion or f"Compra de {producto.nombre}",
+    )
+    db.add(mov_inventario)
+
+    # 3. Caja — egreso
+    mov_caja = MovimientoCaja(
+        tipo="egreso",
+        categoria="compra_inventario",
+        valor=total,
+        metodo_pago=compra.metodo_pago,
+        descripcion=f"Compra: {producto.nombre} x{compra.cantidad} @ ${compra.valor_unitario:.0f}",
+    )
+    db.add(mov_caja)
+
+    db.commit()
+    db.refresh(producto)
+
+    return {
+        "message": "Compra registrada",
+        "producto": producto.nombre,
+        "stock_actual": producto.stock_actual,
+        "total_egreso": total,
+    }
+
+
+@router.post("/ventas")
+def registrar_venta(venta: VentaMostradorCreate, db: Session = Depends(get_db)):
+    """
+    Venta de mostrador (producto sin orden de reparación).
+    En una sola transacción:
+      1. Valida y descuenta stock
+      2. Crea movimiento de inventario tipo 'salida' (Kardex)
+      3. Crea movimiento de caja tipo 'ingreso' (finanzas)
+    """
+    producto = db.query(Producto).filter(Producto.id == venta.producto_id).first()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    if producto.stock_actual < venta.cantidad:
+        raise HTTPException(status_code=400, detail="Stock insuficiente")
+
+    total = venta.cantidad * venta.precio_venta
+
+    # 1. Descontar stock
+    producto.stock_actual -= venta.cantidad
+
+    # 2. Kardex — salida
+    mov_inventario = MovimientoInventario(
+        producto_id=venta.producto_id,
+        tipo="salida",
+        cantidad=venta.cantidad,
+        valor_unitario=venta.precio_venta,
+        motivo=venta.descripcion or f"Venta mostrador: {producto.nombre}",
+    )
+    db.add(mov_inventario)
+
+    # 3. Caja — ingreso
+    mov_caja = MovimientoCaja(
+        tipo="ingreso",
+        categoria="venta_producto",
+        valor=total,
+        metodo_pago=venta.metodo_pago,
+        descripcion=f"Venta: {producto.nombre} x{venta.cantidad} @ ${venta.precio_venta:.0f}",
+    )
+    db.add(mov_caja)
+
+    db.commit()
+    db.refresh(producto)
+
+    return {
+        "message": "Venta registrada",
+        "producto": producto.nombre,
+        "stock_actual": producto.stock_actual,
+        "total_ingreso": total,
+    }
