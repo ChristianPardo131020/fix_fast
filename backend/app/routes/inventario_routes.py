@@ -59,8 +59,11 @@ def _generar_sku(db: Session) -> str:
 @router.post("/productos", response_model=ProductoResponse)
 def crear_producto(producto: ProductoCreate, db: Session = Depends(get_db)):
     datos = producto.dict()
-    if not datos.get("codigo_sku"):
+    sku = (datos.get("codigo_sku") or "").strip()
+    if not sku:
         datos["codigo_sku"] = _generar_sku(db)
+    else:
+        datos["codigo_sku"] = sku
     nuevo = Producto(**datos)
     db.add(nuevo)
     db.commit()

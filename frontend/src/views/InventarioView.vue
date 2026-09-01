@@ -65,7 +65,10 @@
           <BaseInput v-model="form.precio_compra" label="Precio Compra" type="number" />
           <BaseInput v-model="form.precio_venta" label="Precio Venta" type="number" required />
         </div>
-        <BaseInput v-model="form.stock_minimo" label="Stock Mínimo" type="number" />
+        <div class="grid grid-cols-2 gap-4">
+          <BaseInput v-model="form.stock_actual" label="Stock inicial" type="number" />
+          <BaseInput v-model="form.stock_minimo" label="Stock mínimo" type="number" />
+        </div>
         <BaseButton type="submit" :loading="saving">Guardar</BaseButton>
       </form>
     </BaseModal>
@@ -101,7 +104,7 @@ const movimientos = ref([])
 const categorias = ref([])
 const modalOpen = ref(false)
 
-const form = reactive({ nombre: '', codigo_sku: '', precio_compra: 0, precio_venta: 0, stock_minimo: 0, categoria_id: '' })
+const form = reactive({ nombre: '', codigo_sku: '', precio_compra: 0, precio_venta: 0, stock_actual: 0, stock_minimo: 0, categoria_id: '' })
 
 const categoriaOptions = computed(() =>
   categorias.value.map(c => ({ value: c.id, label: c.nombre }))
@@ -111,6 +114,7 @@ const productoColumns = [
   { key: 'nombre', label: 'Nombre' },
   { key: 'codigo_sku', label: 'SKU' },
   { key: 'stock_actual', label: 'Stock' },
+  { key: 'stock_minimo', label: 'Mínimo' },
   { key: 'precio_venta', label: 'Precio Venta' },
 ]
 
@@ -133,10 +137,12 @@ async function loadData() {
 }
 
 function openCreate() {
+  delete form.id
   form.nombre = ''
   form.codigo_sku = ''
   form.precio_compra = 0
   form.precio_venta = 0
+  form.stock_actual = 0
   form.stock_minimo = 0
   form.categoria_id = ''
   modalOpen.value = true
@@ -163,6 +169,7 @@ function openEdit(prod) {
   form.codigo_sku = prod.codigo_sku
   form.precio_compra = prod.precio_compra
   form.precio_venta = prod.precio_venta
+  form.stock_actual = prod.stock_actual
   form.stock_minimo = prod.stock_minimo
   form.categoria_id = prod.categoria_id
   modalOpen.value = true
