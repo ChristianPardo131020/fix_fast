@@ -129,7 +129,6 @@ const productoColumns = [
   { key: 'codigo_sku', label: 'SKU' },
   { key: 'stock_actual', label: 'Stock' },
   { key: 'precio_venta', label: 'Precio Venta' },
-  { key: 'actions', label: '' },
 ]
 
 const movimientoColumns = [
