@@ -7,7 +7,7 @@
       Personaliza las categorías de ingresos y egresos de tu taller para un control más preciso de tus finanzas, o gestiona tus preferencias de apariencia.
     </PageHeader>
 
-    <div class="grid gap-6 md:grid-cols-2">
+    <div class="grid gap-6 md:grid-cols-3">
       <!-- CATEGORIAS DE INGRESOS -->
       <BaseCard title="Categorías de Ingreso" subtitle="Ventas, servicios rápidos, accesorios, etc.">
         <form @submit.prevent="addCategoria('ingreso')" class="mb-6 flex gap-2">
@@ -83,6 +83,36 @@
           description="Crea categorías para clasificar tus gastos operativos."
         />
       </BaseCard>
+
+      <!-- CATEGORIAS DE INVENTARIO -->
+      <BaseCard title="Categorías de Inventario" subtitle="Repuestos, accesorios, herramientas, etc.">
+        <form @submit.prevent="addCategoriaInventario" class="mb-6 flex gap-2">
+          <input
+            v-model="newCategoriaInventario"
+            type="text"
+            required
+            placeholder="Ej. Pantallas, Baterías, Cargadores"
+            class="h-10 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+          />
+          <BaseButton type="submit" icon="plus" :loading="savingCategoriaInventario">Agregar</BaseButton>
+        </form>
+
+        <div v-if="loading" class="space-y-2 animate-pulse">
+          <div v-for="n in 3" :key="n" class="h-10 rounded-lg bg-slate-100 dark:bg-slate-800" />
+        </div>
+
+        <div v-else-if="categoriasInventario.length" class="divide-y divide-slate-100 dark:divide-slate-800/60 max-h-80 overflow-y-auto pr-1">
+          <div v-for="cat in categoriasInventario" :key="cat.id" class="flex items-center justify-between py-3">
+            <span class="text-sm font-medium capitalize text-slate-700 dark:text-slate-200">{{ cat.nombre }}</span>
+          </div>
+        </div>
+        <EmptyState
+          v-else
+          icon="repuesto"
+          title="Sin categorías"
+          description="Crea categorías para clasificar tus productos de inventario."
+        />
+      </BaseCard>
     </div>
 
     <!-- PREFERENCIAS LOCALES -->
@@ -131,6 +161,7 @@ import { API_BASE_URL } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
 import { categoriasApi } from '../api/categoriasApi'
+import { inventarioApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 
 const apiUrl = API_BASE_URL
@@ -141,19 +172,24 @@ const { loading, run } = useApiState()
 
 const ingresos = ref([])
 const egresos = ref([])
+const categoriasInventario = ref([])
 
 const newIngreso = ref('')
 const newEgreso = ref('')
+const newCategoriaInventario = ref('')
 const savingIngreso = ref(false)
 const savingEgreso = ref(false)
+const savingCategoriaInventario = ref(false)
 
 async function loadCategorias() {
-  const [ingResponse, egrResponse] = await Promise.all([
+  const [ingResponse, egrResponse, invResponse] = await Promise.all([
     run(() => categoriasApi.list('ingreso')),
-    run(() => categoriasApi.list('egreso'))
+    run(() => categoriasApi.list('egreso')),
+    run(() => inventarioApi.listCategorias())
   ])
   ingresos.value = ingResponse.data
   egresos.value = egrResponse.data
+  categoriasInventario.value = invResponse.data
 }
 
 async function addCategoria(tipo) {
@@ -171,6 +207,20 @@ async function addCategoria(tipo) {
   } finally {
     if (tipo === 'ingreso') savingIngreso.value = false
     else savingEgreso.value = false
+  }
+}
+
+async function addCategoriaInventario() {
+  const nombre = newCategoriaInventario.value
+  if (!nombre.trim()) return
+
+  savingCategoriaInventario.value = true
+  try {
+    await run(() => inventarioApi.createCategoria({ nombre }), 'Categoría de inventario guardada')
+    newCategoriaInventario.value = ''
+    await loadCategorias()
+  } finally {
+    savingCategoriaInventario.value = false
   }
 }
 

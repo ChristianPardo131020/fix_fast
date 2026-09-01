@@ -19,39 +19,55 @@
       </button>
     </div>
 
-    <!-- Productos -->
-    <section v-if="activeTab === 'productos'">
+    <!-- Categorías -->
+    <section v-if="activeTab === 'categorias'">
       <BaseCard content-class="p-4">
-        <BaseTable :columns="productoColumns" :rows="productos" :loading="loading">
-          <template #precio_venta="{ row }">{{ formatCurrency(row.precio_venta) }}</template>
-          <template #actions="{ row }">
-             <BaseButton variant="ghost" size="sm" @click="openEdit(row)">Editar</BaseButton>
-          </template>
-        </BaseTable>
+        <BaseTable :columns="[{ key: 'nombre', label: 'Nombre' }]" :rows="categorias" :loading="loading" />
       </BaseCard>
     </section>
 
-    <!-- Movimientos -->
-    <section v-if="activeTab === 'movimientos'">
+    <!-- Proveedores -->
+    <section v-if="activeTab === 'proveedores'">
       <BaseCard content-class="p-4">
-        <BaseTable :columns="movimientoColumns" :rows="movimientos" :loading="loading" />
+        <BaseTable :columns="[{ key: 'nombre', label: 'Nombre' }, { key: 'telefono', label: 'Teléfono' }, { key: 'email', label: 'Email' }]" :rows="proveedores" :loading="loading" />
       </BaseCard>
     </section>
+
+    <!-- Modal Producto -->
+    <BaseModal v-model="modalOpen" title="Nuevo producto" subtitle="Registro de producto en inventario.">
+      <form class="grid gap-4" @submit.prevent="saveProducto">
+        <BaseInput v-model="form.nombre" label="Nombre" required />
+        <div class="grid grid-cols-2 gap-4">
+          <BaseInput v-model="form.codigo_sku" label="SKU" />
+          <ComboSelect v-model="form.categoria_id" label="Categoría" :options="categoriaOptions" required />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <BaseInput v-model="form.precio_compra" label="Precio Compra" type="number" />
+          <BaseInput v-model="form.precio_venta" label="Precio Venta" type="number" required />
+        </div>
+        <BaseInput v-model="form.stock_minimo" label="Stock Mínimo" type="number" />
+        <BaseButton type="submit" :loading="saving">Guardar</BaseButton>
+      </form>
+    </BaseModal>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
 import BaseTable from '../components/BaseTable.vue'
 import PageHeader from '../components/PageHeader.vue'
+import BaseModal from '../components/BaseModal.vue'
+import BaseInput from '../components/BaseInput.vue'
+import ComboSelect from '../components/ComboSelect.vue'
 import { inventarioApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 
 const { formatCurrency } = useFormatters()
 const { loading, run } = useApiState()
+const saving = ref(false)
 
 const tabs = [
   { key: 'productos', label: 'Productos' },
@@ -62,6 +78,15 @@ const tabs = [
 const activeTab = ref('productos')
 const productos = ref([])
 const movimientos = ref([])
+const categorias = ref([])
+const proveedores = ref([])
+const modalOpen = ref(false)
+
+const form = reactive({ nombre: '', codigo_sku: '', precio_compra: 0, precio_venta: 0, stock_minimo: 0, categoria_id: '' })
+
+const categoriaOptions = computed(() =>
+  categorias.value.map(c => ({ value: c.id, label: c.nombre }))
+)
 
 const productoColumns = [
   { key: 'nombre', label: 'Nombre' },
@@ -79,16 +104,42 @@ const movimientoColumns = [
 ]
 
 async function loadData() {
-  const [prodRes, movRes] = await Promise.all([
+  const [prodRes, movRes, catRes, provRes] = await Promise.all([
     run(() => inventarioApi.listProductos()),
-    run(() => inventarioApi.listMovimientos())
+    run(() => inventarioApi.listMovimientos()),
+    run(() => inventarioApi.listCategorias()),
+    run(() => inventarioApi.listProveedores())
   ])
   productos.value = prodRes.data
   movimientos.value = movRes.data
+  categorias.value = catRes.data
+  proveedores.value = provRes.data
 }
 
-function openCreate() {}
-function openEdit(prod) {}
+function openCreate() {
+  form.nombre = ''
+  form.codigo_sku = ''
+  form.precio_compra = 0
+  form.precio_venta = 0
+  form.stock_minimo = 0
+  form.categoria_id = ''
+  modalOpen.value = true
+}
+
+async function saveProducto() {
+  saving.value = true
+  try {
+    await run(() => inventarioApi.createProducto(form))
+    modalOpen.value = false
+    await loadData()
+  } finally {
+    saving.value = false
+  }
+}
+
+function openEdit(prod) {
+    // Implementar edición en el futuro
+}
 
 onMounted(loadData)
 </script>
