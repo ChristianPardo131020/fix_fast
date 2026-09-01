@@ -412,7 +412,12 @@ async function loadData() {
       inventarioApi.listProductos(),
     ])
     if (pagosRes.status === 'fulfilled') pagos.value = pagosRes.value.data
-    if (movRes.status === 'fulfilled') movimientosIngreso.value = movRes.value.data.filter((mov) => mov.tipo === 'ingreso')
+    if (movRes.status === 'fulfilled') {
+      movimientosIngreso.value = movRes.value.data.filter((mov) => mov.tipo === 'ingreso')
+    } else {
+      console.error('Error al cargar movimientos de caja:', movRes.reason)
+      ui.toast('No se pudieron cargar los ingresos de caja', 'error')
+    }
     if (ordenesRes.status === 'fulfilled') ordenes.value = ordenesRes.value.data
     if (catRes.status === 'fulfilled') categoriasDinamicas.value = catRes.value.data
     if (prodRes.status === 'fulfilled') productosInventario.value = prodRes.value.data

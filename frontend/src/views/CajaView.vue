@@ -232,7 +232,12 @@ async function loadMovimientos() {
       movimientosCajaApi.list(),
       categoriasApi.list('egreso'),
     ])
-    if (movRes.status === 'fulfilled') movimientos.value = movRes.value.data.filter((m) => m.tipo === 'egreso')
+    if (movRes.status === 'fulfilled') {
+      movimientos.value = movRes.value.data.filter((m) => m.tipo === 'egreso')
+    } else {
+      console.error('Error al cargar egresos:', movRes.reason)
+      ui.toast('No se pudieron cargar los egresos', 'error')
+    }
     if (catRes.status === 'fulfilled') categoriasDinamicas.value = catRes.value.data
   } finally {
     loading.value = false
@@ -241,6 +246,7 @@ async function loadMovimientos() {
 
 async function saveMovimiento(payload) {
   if (!payload.valor || payload.valor <= 0) {
+    ui.toast('El valor debe ser mayor a 0', 'error')
     return
   }
 
@@ -250,6 +256,8 @@ async function saveMovimiento(payload) {
     await run(() => movimientosCajaApi.create({ ...payload, tipo: 'egreso' }), 'Egreso registrado')
     modalOpen.value = false
     await loadMovimientos()
+  } catch {
+    // run() ya mostró el toast de error — el modal queda abierto para reintentar
   } finally {
     saving.value = false
   }

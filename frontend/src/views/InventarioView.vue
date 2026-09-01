@@ -200,8 +200,18 @@ async function loadData() {
       inventarioApi.listMovimientos(),
       inventarioApi.listCategorias(),
     ])
-    if (prodRes.status === 'fulfilled') productos.value = prodRes.value.data
-    if (movRes.status === 'fulfilled') movimientos.value = movRes.value.data
+    if (prodRes.status === 'fulfilled') {
+      productos.value = prodRes.value.data
+    } else {
+      console.error('Error al cargar productos:', prodRes.reason)
+      ui.toast('No se pudieron cargar los productos', 'error')
+    }
+    if (movRes.status === 'fulfilled') {
+      movimientos.value = movRes.value.data
+    } else {
+      console.error('Error al cargar movimientos (Kardex):', movRes.reason)
+      ui.toast('No se pudieron cargar los movimientos', 'error')
+    }
     if (catRes.status === 'fulfilled') categorias.value = catRes.value.data
   } finally {
     loading.value = false
