@@ -110,6 +110,29 @@
           <EmptyState v-else icon="clock" title="Sin eventos" description="Todavia no hay eventos registrados para esta orden." />
         </BaseCard>
       </section>
+
+      <!-- Repuestos -->
+      <section v-if="activeTab === 'repuestos'">
+        <BaseCard title="Repuestos usados" subtitle="Repuestos consumidos del inventario para esta orden">
+          <template #header>
+            <BaseButton size="sm" icon="plus" @click="openAgregarRepuesto">Agregar repuesto</BaseButton>
+          </template>
+
+          <div v-if="repuestosUsados.length" class="divide-y divide-slate-100 dark:divide-slate-800">
+            <div v-for="repuesto in repuestosUsados" :key="repuesto.id" class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-slate-950 dark:text-white">{{ repuesto.producto?.nombre || 'Producto' }}</p>
+                <p class="truncate text-xs text-slate-500 dark:text-slate-400">Cantidad: {{ repuesto.cantidad }} · Precio unitario: {{ formatCurrency(repuesto.precio_venta) }}</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="shrink-0 text-sm font-bold text-slate-900 dark:text-white">{{ formatCurrency(repuesto.cantidad * repuesto.precio_venta) }}</span>
+                <BaseButton variant="ghost" size="sm" icon="trash" @click="removeRepuesto(repuesto)">Eliminar</BaseButton>
+              </div>
+            </div>
+          </div>
+          <EmptyState v-else icon="wrench" title="Sin repuestos" description="No hay repuestos registrados para esta orden." />
+        </BaseCard>
+      </section>
     </template>
 
     <!-- Editar orden -->
@@ -161,24 +184,44 @@
         </div>
       </form>
     </BaseModal>
+
+    <!-- Agregar Repuesto -->
+    <BaseModal v-model="repuestoModalOpen" title="Agregar repuesto" subtitle="Añadir un repuesto del inventario a la orden de reparación.">
+      <form class="grid gap-4" @submit.prevent="saveRepuesto">
+        <ComboSelect v-model="repuestoForm.producto_id" label="Repuesto / Producto" :options="productosOptions" required />
+        <div class="grid gap-4 grid-cols-2">
+          <BaseInput v-model="repuestoForm.cantidad" label="Cantidad" type="number" required min="1" />
+          <BaseInput v-model="repuestoForm.precio_venta" label="Precio Unitario" type="number" required />
+        </div>
+        <div class="text-xs text-slate-500" v-if="selectedProducto">
+          Stock actual: <span class="font-bold">{{ selectedProducto.stock_actual }}</span>
+        </div>
+        <div class="flex justify-end gap-2">
+          <BaseButton variant="secondary" @click="repuestoModalOpen = false">Cancelar</BaseButton>
+          <BaseButton type="submit" :loading="savingRepuesto">Guardar repuesto</BaseButton>
+        </div>
+      </form>
+    </BaseModal>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
 import BaseInput from '../components/BaseInput.vue'
 import BaseModal from '../components/BaseModal.vue'
+import ComboSelect from '../components/ComboSelect.vue'
 import EmptyState from '../components/EmptyState.vue'
 import StatCard from '../components/StatCard.vue'
 import StatusBadge from '../components/StatusBadge.vue'
-import { clientesApi, ordenesApi, pagosApi } from '../api/resources'
+import { clientesApi, ordenesApi, pagosApi, inventarioApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { ESTADOS_LABELS, resolveEstado } from '../constants/estados'
 import { useFormatters } from '../composables/useFormatters'
+import { useUiStore } from '../stores/ui'
 
 const props = defineProps({
   id: { type: [String, Number], required: true },
@@ -188,19 +231,45 @@ const router = useRouter()
 const { formatCurrency, formatDate } = useFormatters()
 const { run } = useApiState()
 
+const ui = useUiStore()
 const estados = ESTADOS_LABELS
 const tabs = [
   { key: 'resumen', label: 'Resumen' },
   { key: 'pagos', label: 'Pagos' },
   { key: 'timeline', label: 'Linea de tiempo' },
+  { key: 'repuestos', label: 'Repuestos' },
 ]
 
 const orden = ref(null)
 const clientes = ref([])
 const pagos = ref([])
 const historialEstados = ref([])
+const repuestosUsados = ref([])
+const allProductos = ref([])
 const notFound = ref(false)
 const activeTab = ref('resumen')
+
+const repuestoModalOpen = ref(false)
+const savingRepuesto = ref(false)
+const repuestoForm = reactive({ producto_id: '', cantidad: 1, precio_venta: 0 })
+
+const productosOptions = computed(() =>
+  allProductos.value.map(p => ({ value: p.id, label: `${p.nombre} (Stock: ${p.stock_actual})` }))
+)
+
+const selectedProducto = computed(() => {
+  return allProductos.value.find(p => p.id === Number(repuestoForm.producto_id))
+})
+
+watch(
+  () => repuestoForm.producto_id,
+  (newId) => {
+    const prod = allProductos.value.find(p => p.id === Number(newId))
+    if (prod) {
+      repuestoForm.precio_venta = prod.precio_venta
+    }
+  }
+)
 
 const cambiandoEstado = ref(false)
 const cambiandoEstadoGuardando = ref(false)
@@ -213,6 +282,29 @@ const editForm = reactive({ cliente_id: '', numero_orden: '', equipo: '', marca:
 const pagoModalOpen = ref(false)
 const savingPago = ref(false)
 const pagoForm = reactive({ valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
+
+// --- Repuestos ---
+const repuestosUsados = ref([])
+const repuestoModalOpen = ref(false)
+const savingRepuesto = ref(false)
+const repuestoForm = reactive({ producto_id: '', cantidad: 1, precio_venta: 0 })
+const productosInventario = ref([])
+
+const productosOptions = computed(() =>
+  productosInventario.value
+    .filter(p => p.stock_actual > 0)
+    .map(p => ({ value: p.id, label: `${p.nombre}${p.codigo_sku ? ` (${p.codigo_sku})` : ''} — Stock: ${p.stock_actual}` }))
+)
+
+const selectedProducto = computed(() =>
+  productosInventario.value.find(p => Number(p.id) === Number(repuestoForm.producto_id)) || null
+)
+
+// Actualizar precio de venta al seleccionar un producto
+watch(() => repuestoForm.producto_id, (nuevoId) => {
+  const prod = productosInventario.value.find(p => Number(p.id) === Number(nuevoId))
+  if (prod) repuestoForm.precio_venta = prod.precio_venta || 0
+})
 
 const clienteNombre = computed(() => {
   if (!orden.value) return 'Cliente'

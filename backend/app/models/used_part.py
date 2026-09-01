@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, ForeignKey, Float
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 class UsedPart(Base):
@@ -9,3 +10,5 @@ class UsedPart(Base):
     producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
     cantidad = Column(Integer, nullable=False)
     precio_venta = Column(Float, nullable=False) # Precio al que se le vendió al cliente en esa orden
+
+    producto = relationship("Producto")

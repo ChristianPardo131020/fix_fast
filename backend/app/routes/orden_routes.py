@@ -6,11 +6,15 @@ from app.models.historial_estado import HistorialEstado
 from app.models.orden import Orden
 from app.models.pago import Pago
 from app.models.usuario import Usuario
+from app.models.used_part import UsedPart
+from app.models.producto import Producto
+from app.models.movimiento_inventario import MovimientoInventario
 from app.schemas.orden_schema import (
     OrdenCreate,
     OrdenResponse
 )
 from app.schemas.historial_estado_schema import HistorialEstadoResponse
+from app.schemas.used_part_schema import UsedPartCreate, UsedPartResponse
 from app.auth.dependencies import get_current_user
 
 router = APIRouter(
@@ -177,4 +181,119 @@ def eliminar_orden(
 
     return {
         "message": "Orden eliminada"
+    }
+
+# obtener repuestos de una orden
+@router.get("/{orden_id}/repuestos", response_model=list[UsedPartResponse])
+def obtener_repuestos(
+    orden_id: int,
+    db: Session = Depends(get_db)
+):
+    orden = db.query(Orden).filter(Orden.id == orden_id).first()
+    if not orden:
+        raise HTTPException(
+            status_code=404,
+            detail="Orden no encontrada"
+        )
+    return db.query(UsedPart).filter(UsedPart.orden_id == orden_id).all()
+
+# agregar repuesto a una orden
+@router.post("/{orden_id}/repuestos", response_model=UsedPartResponse)
+def agregar_repuesto(
+    orden_id: int,
+    payload: UsedPartCreate,
+    db: Session = Depends(get_db)
+):
+    orden = db.query(Orden).filter(Orden.id == orden_id).first()
+    if not orden:
+        raise HTTPException(
+            status_code=404,
+            detail="Orden no encontrada"
+        )
+
+    producto = db.query(Producto).filter(Producto.id == payload.producto_id).first()
+    if not producto:
+        raise HTTPException(
+            status_code=404,
+            detail="Producto no encontrado"
+        )
+
+    if producto.stock_actual < payload.cantidad:
+        raise HTTPException(
+            status_code=400,
+            detail="Stock insuficiente en inventario"
+        )
+
+    # Modificar stock del producto
+    producto.stock_actual -= payload.cantidad
+
+    # Crear el registro de repuesto usado
+    nuevo_repuesto = UsedPart(
+        orden_id=orden_id,
+        producto_id=payload.producto_id,
+        cantidad=payload.cantidad,
+        precio_venta=payload.precio_venta
+    )
+    db.add(nuevo_repuesto)
+
+    # Crear movimiento de inventario (salida)
+    movimiento = MovimientoInventario(
+        producto_id=payload.producto_id,
+        tipo="salida",
+        cantidad=payload.cantidad,
+        valor_unitario=payload.precio_venta,
+        motivo=f"Repuesto usado en Orden #{orden.numero_orden or orden_id}",
+        orden_id=orden_id
+    )
+    db.add(movimiento)
+
+    db.commit()
+    db.refresh(nuevo_repuesto)
+
+    return nuevo_repuesto
+
+# eliminar repuesto de una orden
+@router.delete("/{orden_id}/repuestos/{repuesto_id}")
+def eliminar_repuesto(
+    orden_id: int,
+    repuesto_id: int,
+    db: Session = Depends(get_db)
+):
+    repuesto = db.query(UsedPart).filter(
+        UsedPart.id == repuesto_id,
+        UsedPart.orden_id == orden_id
+    ).first()
+    if not repuesto:
+        raise HTTPException(
+            status_code=404,
+            detail="Repuesto no encontrado en esta orden"
+        )
+
+    producto = db.query(Producto).filter(Producto.id == repuesto.producto_id).first()
+    if not producto:
+        raise HTTPException(
+            status_code=404,
+            detail="Producto no encontrado"
+        )
+
+    # Devolver stock
+    producto.stock_actual += repuesto.cantidad
+
+    # Crear movimiento de inventario (entrada por devolucion)
+    orden = db.query(Orden).filter(Orden.id == orden_id).first()
+    movimiento = MovimientoInventario(
+        producto_id=repuesto.producto_id,
+        tipo="entrada",
+        cantidad=repuesto.cantidad,
+        valor_unitario=repuesto.precio_venta,
+        motivo=f"Devolución de repuesto de Orden #{orden.numero_orden if orden else orden_id}",
+        orden_id=orden_id
+    )
+    db.add(movimiento)
+
+    db.delete(repuesto)
+    db.commit()
+
+    return {
+        "message": "Repuesto eliminado e inventario actualizado"
     }

@@ -19,6 +19,40 @@
       </button>
     </div>
 
+    <!-- Productos -->
+    <section v-if="activeTab === 'productos'">
+      <BaseCard content-class="p-4">
+        <BaseTable :columns="productoColumns" :rows="productos" :loading="loading">
+          <template #actions="{ row }">
+            <div class="flex justify-end gap-2">
+              <BaseButton variant="secondary" size="sm" icon="edit" @click="openEdit(row)">Editar</BaseButton>
+              <BaseButton variant="danger" size="sm" icon="trash" @click="removeProducto(row)">Eliminar</BaseButton>
+            </div>
+          </template>
+          <template #precio_venta="{ value }">
+            {{ formatCurrency(value) }}
+          </template>
+          <template #stock_actual="{ value }">
+            <span :class="value > 0 ? 'text-green-600' : 'text-red-500'">{{ value }}</span>
+          </template>
+        </BaseTable>
+      </BaseCard>
+    </section>
+
+    <!-- Movimientos (Kardex) -->
+    <section v-if="activeTab === 'movimientos'">
+      <BaseCard content-class="p-4">
+        <BaseTable :columns="movimientoColumns" :rows="movimientos" :loading="loading">
+          <template #producto_id="{ row }">
+            {{ row.producto ? row.producto.nombre : 'ID: ' + row.producto_id }}
+          </template>
+          <template #created_at="{ value }">
+            {{ new Date(value).toLocaleDateString() }}
+          </template>
+        </BaseTable>
+      </BaseCard>
+    </section>
+
     <!-- Categorías -->
     <section v-if="activeTab === 'categorias'">
       <BaseCard content-class="p-4">
@@ -64,10 +98,12 @@ import ComboSelect from '../components/ComboSelect.vue'
 import { inventarioApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
+import { useUiStore } from '../stores/ui'
 
 const { formatCurrency } = useFormatters()
 const { loading, run } = useApiState()
 const saving = ref(false)
+const ui = useUiStore()
 
 const tabs = [
   { key: 'productos', label: 'Productos' },
@@ -129,7 +165,11 @@ function openCreate() {
 async function saveProducto() {
   saving.value = true
   try {
-    await run(() => inventarioApi.createProducto(form))
+    if (form.id) {
+      await run(() => inventarioApi.updateProducto(form.id, form))
+    } else {
+      await run(() => inventarioApi.createProducto(form))
+    }
     modalOpen.value = false
     await loadData()
   } finally {
@@ -138,7 +178,25 @@ async function saveProducto() {
 }
 
 function openEdit(prod) {
-    // Implementar edición en el futuro
+  form.id = prod.id
+  form.nombre = prod.nombre
+  form.codigo_sku = prod.codigo_sku
+  form.precio_compra = prod.precio_compra
+  form.precio_venta = prod.precio_venta
+  form.stock_minimo = prod.stock_minimo
+  form.categoria_id = prod.categoria_id
+  modalOpen.value = true
+}
+
+async function removeProducto(prod) {
+  const confirmed = await ui.confirm({
+    title: `Eliminar producto "${prod.nombre}"`,
+    message: 'Se eliminará el producto y sus movimientos de inventario.'
+  })
+  if (!confirmed) return
+
+  await run(() => inventarioApi.removeProducto(prod.id), 'Producto eliminado')
+  await loadData()
 }
 
 onMounted(loadData)

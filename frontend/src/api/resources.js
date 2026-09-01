@@ -28,6 +28,9 @@ export const ordenesApi = {
   update: (id, payload) => http.put(`/ordenes/${id}`, payload),
   remove: (id) => http.delete(`/ordenes/${id}`),
   historial: (id) => http.get(`/ordenes/${id}/historial`),
+  listRepuestos: (id) => http.get(`/ordenes/${id}/repuestos`),
+  addRepuesto: (id, payload) => http.post(`/ordenes/${id}/repuestos`, payload),
+  removeRepuesto: (id, repuesto_id) => http.delete(`/ordenes/${id}/repuestos/${repuesto_id}`),
 }
 
 export const pagosApi = {
