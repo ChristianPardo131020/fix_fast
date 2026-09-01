@@ -13,9 +13,18 @@ class MovimientoInventarioBase(BaseModel):
 class MovimientoInventarioCreate(MovimientoInventarioBase):
     pass
 
+class ProductoMinimo(BaseModel):
+    id: int
+    nombre: str
+    codigo_sku: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class MovimientoInventarioResponse(MovimientoInventarioBase):
     id: int
     created_at: datetime
+    producto: Optional[ProductoMinimo] = None
 
     class Config:
         from_attributes = True

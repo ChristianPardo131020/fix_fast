@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, TIMESTAMP, text
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 class MovimientoInventario(Base):
@@ -15,3 +16,5 @@ class MovimientoInventario(Base):
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP")
     )
+
+    producto = relationship("Producto", lazy="joined")
