@@ -88,6 +88,20 @@ def crear_producto(producto: ProductoCreate, db: Session = Depends(get_db)):
         datos["codigo_sku"] = sku
     nuevo = Producto(**datos)
     db.add(nuevo)
+    db.flush()  # asigna el id sin cerrar la transacción
+
+    # Si el producto nace con stock > 0, registrar entrada en Kardex
+    # para que haya trazabilidad desde el día 1.
+    if nuevo.stock_actual and nuevo.stock_actual > 0:
+        mov = MovimientoInventario(
+            producto_id=nuevo.id,
+            tipo="entrada",
+            cantidad=nuevo.stock_actual,
+            valor_unitario=nuevo.precio_compra or 0,
+            motivo="Stock inicial al crear producto",
+        )
+        db.add(mov)
+
     db.commit()
     db.refresh(nuevo)
     return nuevo

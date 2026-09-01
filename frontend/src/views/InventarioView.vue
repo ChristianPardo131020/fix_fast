@@ -236,10 +236,12 @@ async function saveProducto() {
     if (form.id) {
       await run(() => inventarioApi.updateProducto(form.id, form))
     } else {
-      await run(() => inventarioApi.createProducto(form))
+      await run(() => inventarioApi.createProducto(form), 'Producto creado')
     }
     modalOpen.value = false
     await loadData()
+  } catch {
+    // run() ya mostró el toast de error
   } finally {
     saving.value = false
   }
@@ -289,6 +291,8 @@ async function saveCompra() {
     }), 'Compra registrada — stock, Kardex y egreso actualizados')
     compraModalOpen.value = false
     await loadData()
+  } catch {
+    // run() ya mostró el toast de error — el modal queda abierto para reintentar
   } finally {
     savingCompra.value = false
   }
