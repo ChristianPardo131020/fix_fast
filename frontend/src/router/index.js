@@ -30,6 +30,7 @@ const routes = [
       // el redirect para no romper enlaces/bookmarks viejos a /ingresos.
       { path: 'ingresos', redirect: { name: 'pagos' } },
       { path: 'caja', name: 'caja', component: () => import('../views/CajaView.vue') },
+      { path: 'inventario', name: 'inventario', component: () => import('../views/InventarioView.vue') },
       { path: 'finanzas', redirect: { name: 'caja' } },
       { path: 'configuracion', name: 'configuracion', component: () => import('../views/ConfiguracionView.vue') },
     ],

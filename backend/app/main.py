@@ -34,6 +34,10 @@ from app.routes.categoria_routes import (
 from app.routes.public_routes import (
     router as public_router
 )
+
+from app.routes.inventario_routes import (
+    router as inventario_router
+)
 app = FastAPI()
 
 # CORS: orígenes permitidos vía env (csv), ej. "http://localhost:5173"
@@ -59,6 +63,7 @@ app.include_router(auth_router)
 app.include_router(movimiento_caja_router)
 app.include_router(categoria_router)
 app.include_router(public_router)
+app.include_router(inventario_router)
 
 @app.get("/")
 def home():

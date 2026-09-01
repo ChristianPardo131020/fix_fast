@@ -9,6 +9,11 @@ from app.models.pago import Pago
 from app.models.movimiento_caja import MovimientoCaja
 from app.models.historial_estado import HistorialEstado
 from app.models.categoria import Categoria
+from app.models.categoria_inventario import CategoriaInventario
+from app.models.proveedor import Proveedor
+from app.models.producto import Producto
+from app.models.movimiento_inventario import MovimientoInventario
+from app.models.used_part import UsedPart
 
 print("Creando tablas...")
 

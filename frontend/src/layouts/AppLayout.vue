@@ -158,6 +158,12 @@ const navGroups = [
       { name: 'Clientes', route: 'clientes', icon: 'users' },
     ],
   },
+    {
+    label: 'Inventario',
+    items: [
+      { name: 'Productos', route: 'inventario', icon: 'repuesto' },
+    ],
+  },
   {
     label: 'Finanzas',
     items: [
