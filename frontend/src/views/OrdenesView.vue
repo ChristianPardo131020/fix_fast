@@ -179,7 +179,7 @@ const clientes = ref([])
 const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const now = new Date()
 const selectedYear = ref(now.getFullYear())
-const selectedMonth = ref(now.getMonth() + 1)
+const selectedMonth = ref(null)
 const selectedDay = ref(null)
 
 const availableYears = computed(() => {
