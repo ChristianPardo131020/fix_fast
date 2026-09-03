@@ -148,11 +148,12 @@
           <BaseInput v-model="editForm.modelo" label="Modelo" />
         </div>
         <BaseInput v-model="editForm.problema" label="Falla reportada" textarea required />
-        <div class="grid gap-4 sm:grid-cols-4">
+        <div class="grid gap-4 sm:grid-cols-3">
           <BaseInput v-model="editForm.numero_orden" label="Numero de orden" readonly />
           <BaseInput v-model="editForm.estado" label="Estado" type="select">
             <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
           </BaseInput>
+          <BaseInput v-model="editForm.fecha_ingreso" label="Fecha de ingreso" type="datetime-local" />
           <BaseInput v-model="editForm.valor" label="Valor total" type="number" />
           <BaseInput v-model="editForm.saldo" label="Saldo pendiente" type="number" />
         </div>
@@ -253,7 +254,7 @@ const nuevoEstado = ref('')
 
 const editModalOpen = ref(false)
 const savingEdit = ref(false)
-const editForm = reactive({ cliente_id: '', numero_orden: '', equipo: '', marca: '', modelo: '', problema: '', diagnostico: '', estado: 'Pendiente', valor: 0, saldo: 0 })
+const editForm = reactive({ cliente_id: '', numero_orden: '', equipo: '', marca: '', modelo: '', problema: '', diagnostico: '', estado: 'Pendiente', valor: 0, saldo: 0, fecha_ingreso: '' })
 
 const pagoModalOpen = ref(false)
 const savingPago = ref(false)
@@ -429,7 +430,20 @@ function ordenPayload(source) {
     valor: source.valor,
     saldo: source.saldo,
     tecnico_id: source.tecnico_id,
+    fecha_ingreso: source.fecha_ingreso || null,
   }
+}
+
+// Fecha local actual formateada para input datetime-local (YYYY-MM-DDTHH:mm)
+function localNow() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function isoToLocal(isoStr) {
+  if (!isoStr) return localNow()
+  const d = new Date(isoStr)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 function openEdit() {
@@ -444,13 +458,15 @@ function openEdit() {
     estado: orden.value.estado || 'Pendiente',
     valor: orden.value.valor || 0,
     saldo: orden.value.saldo || 0,
+    fecha_ingreso: isoToLocal(orden.value.fecha_ingreso),
   })
   editModalOpen.value = true
 }
 
 async function saveEdit() {
   savingEdit.value = true
-  const payload = { ...editForm, cliente_id: Number(editForm.cliente_id), valor: Number(editForm.valor || 0), saldo: Number(editForm.saldo || 0) }
+  const fechaISO = editForm.fecha_ingreso ? new Date(editForm.fecha_ingreso).toISOString() : null
+  const payload = { ...editForm, cliente_id: Number(editForm.cliente_id), valor: Number(editForm.valor || 0), saldo: Number(editForm.saldo || 0), fecha_ingreso: fechaISO }
   try {
     await run(() => ordenesApi.update(orden.value.id, payload), 'Orden actualizada')
     editModalOpen.value = false

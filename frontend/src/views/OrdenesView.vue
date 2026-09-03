@@ -100,6 +100,7 @@
           <BaseInput v-model="form.estado" label="Estado" type="select">
             <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
           </BaseInput>
+          <BaseInput v-model="form.fecha_ingreso" label="Fecha de ingreso" type="datetime-local" />
           <BaseInput v-model="form.valor" label="Valor total" type="number" />
           <BaseInput
             v-model="saldoDisplay"
@@ -208,7 +209,13 @@ const showNewCliente = ref(false)
 const savingCliente = ref(false)
 const newCliente = reactive({ nombre: '', telefono: '' })
 
-const form = reactive({ cliente_id: '', numero_orden: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0, abono: 0, abono_metodo_pago: 'Efectivo' })
+// Fecha local actual formateada para input datetime-local (YYYY-MM-DDTHH:mm)
+function localNow() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+const form = reactive({ cliente_id: '', numero_orden: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0, abono: 0, abono_metodo_pago: 'Efectivo', fecha_ingreso: localNow() })
 
 // Mapa id->cliente, se recalcula solo cuando cambia la lista de
 // clientes (no en cada letra tipeada). Con ~2300 clientes y ~3500
@@ -296,7 +303,7 @@ function clienteNombre(orden) {
 }
 
 function resetForm() {
-  Object.assign(form, { cliente_id: '', numero_orden: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0, abono: 0, abono_metodo_pago: 'Efectivo' })
+  Object.assign(form, { cliente_id: '', numero_orden: '', equipo: '', marca: '', modelo: '', problema: '', estado: 'Pendiente', valor: 0, saldo: 0, abono: 0, abono_metodo_pago: 'Efectivo', fecha_ingreso: localNow() })
   editingId.value = null
   showNewCliente.value = false
   Object.assign(newCliente, { nombre: '', telefono: '' })
@@ -339,6 +346,12 @@ async function openCreate() {
 
 function openEdit(orden) {
   editingId.value = orden.id
+  // Convertir fecha_ingreso ISO a formato datetime-local (YYYY-MM-DDTHH:mm)
+  let fechaLocal = localNow()
+  if (orden.fecha_ingreso) {
+    const d = new Date(orden.fecha_ingreso)
+    fechaLocal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
   Object.assign(form, {
     cliente_id: orden.cliente_id || orden.cliente?.id || '',
     numero_orden: orden.numero_orden || '',
@@ -351,6 +364,7 @@ function openEdit(orden) {
     saldo: orden.saldo || 0,
     abono: 0,
     abono_metodo_pago: 'Efectivo',
+    fecha_ingreso: fechaLocal,
   })
   modalOpen.value = true
 }
@@ -383,10 +397,13 @@ async function saveOrden() {
   // aca para mostrar el saldo previsto y, despues de crear la orden,
   // para registrar el pago correspondiente.
   const { abono, abono_metodo_pago, ...ordenFields } = form
+  // Convertir fecha_ingreso de datetime-local a ISO para el backend
+  const fechaISO = form.fecha_ingreso ? new Date(form.fecha_ingreso).toISOString() : null
   const payload = {
     ...ordenFields,
     cliente_id: Number(form.cliente_id),
     valor: valorNum,
+    fecha_ingreso: fechaISO,
     // Al crear, el saldo arranca en el valor total. Si hay abono, se
     // registra aparte como Pago (mas abajo) y es crear_pago() quien
     // descuenta el saldo (misma logica que "Registrar pago" en
@@ -443,6 +460,7 @@ async function cambiarEstado({ orden, estado }) {
       valor: orden.valor,
       saldo: orden.saldo,
       tecnico_id: orden.tecnico_id,
+      fecha_ingreso: orden.fecha_ingreso || null,
     }),
     'Estado actualizado',
   )

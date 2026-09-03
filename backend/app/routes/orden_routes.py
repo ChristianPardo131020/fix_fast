@@ -45,6 +45,10 @@ def crear_orden(
     # Ignorar numero_orden del frontend — siempre se genera en el backend
     # para garantizar el consecutivo único incluso con concurrencia.
     datos.pop("numero_orden", None)
+    # Si no se envio fecha_ingreso, se elimina para que el server_default
+    # de Postgres (CURRENT_TIMESTAMP) aplique. Si se envio, se respeta.
+    if datos.get("fecha_ingreso") is None:
+        datos.pop("fecha_ingreso", None)
     nueva_orden = Orden(**datos)
 
     # Generar el numero de orden consecutivo

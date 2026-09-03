@@ -23,7 +23,7 @@ class OrdenBase(BaseModel):
     tecnico_id: Optional[int] = None
 
 class OrdenCreate(OrdenBase):
-    pass
+    fecha_ingreso: Optional[datetime] = None
 
 class OrdenResponse(OrdenBase):
     id: int
