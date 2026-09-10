@@ -3,17 +3,7 @@
     <PageHeader title="Resumen general" subtitle="El estado de tu taller, sin vueltas." />
 
     <FilterBar label="Periodo">
-      <BaseSelect v-model="selectedMonth" variant="card">
-        <option :value="null">Todos los meses</option>
-        <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
-      </BaseSelect>
-      <BaseSelect v-if="selectedMonth !== null" v-model="selectedDay" variant="card">
-        <option :value="null">Todos los días</option>
-        <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
-      </BaseSelect>
-      <BaseSelect v-model="selectedYear" variant="card">
-        <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
-      </BaseSelect>
+      <DateRangePicker v-model="dateRange" />
     </FilterBar>
 
     <!-- Acciones rapidas: llevan a la vista correspondiente con el modal
@@ -190,7 +180,7 @@ import OrdersStatusPanel from '../components/dashboard/OrdersStatusPanel.vue'
 import PaymentMethodsPanel from '../components/dashboard/PaymentMethodsPanel.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
-import BaseSelect from '../components/BaseSelect.vue'
+import DateRangePicker from '../components/DateRangePicker.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FilterBar from '../components/FilterBar.vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -203,32 +193,14 @@ const { formatCurrency, formatNumber } = useFormatters()
 const { run } = useApiState()
 const router = useRouter()
 
-const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+import { toISO } from '../utils/dateRanges'
 
 const now = new Date()
-const selectedYear = ref(now.getFullYear())
-const selectedMonth = ref(now.getMonth() + 1) // 1-12, null = todo el año
-const selectedDay = ref(now.getDate()) // por defecto hoy
+const dateRange = ref({
+  desde: toISO(now),
+  hasta: toISO(now),
+})
 const chartGranularity = ref(null) // null = que el backend elija el default segun el periodo
-
-const daysInSelectedMonth = computed(() => {
-  if (!selectedMonth.value) return 0
-  return new Date(selectedYear.value, selectedMonth.value, 0).getDate()
-})
-
-// Si el usuario cambia mes/año, resetear dia si queda invalido
-watch([selectedYear, selectedMonth], () => {
-  selectedDay.value = null
-})
-
-// El backend calcula todo — el frontend solo pinta "dashboard" tal cual
-// llega. availableYears es la unica lista que se arma en el cliente, y
-// no es un calculo de negocio: son opciones de un <select>.
-const availableYears = computed(() => {
-  const years = new Set([now.getFullYear()])
-  if (dashboard.value) years.add(dashboard.value.periodo.year)
-  return [...years].sort((a, b) => b - a)
-})
 
 const dashboard = ref(null)
 const loading = ref(true)
@@ -238,21 +210,45 @@ const periodo = computed(() => dashboard.value?.periodo || { label: '' })
 
 // Si el usuario clickeo explicitamente Dia/Semana/Mes/Año, esa eleccion
 // se respeta al cambiar de periodo. Si nunca la toco, cada cambio de
-// Mes/Año vuelve a pedirle al backend su default inteligente (dia para
-// un mes puntual, mes para "todos los meses") en vez de arrastrar una
-// granularidad que ya no tiene sentido para el nuevo rango (ej. ver
-// 365 puntos diarios de golpe al pasar de un mes a "todo el año").
+// rango vuelve a pedirle al backend su default inteligente.
 const granularityTouchedByUser = ref(false)
+
+// Convierte el rango desde/hasta en los params year/month/day que
+// espera el endpoint del dashboard.
+function rangeToParams(range) {
+  if (!range.desde && !range.hasta) {
+    return { year: now.getFullYear() }
+  }
+  const [sy, sm, sd] = (range.desde || range.hasta).split('-').map(Number)
+  const [ey, em, ed] = (range.hasta || range.desde).split('-').map(Number)
+
+  // Mismo día → year + month + day
+  if (range.desde === range.hasta) {
+    return { year: sy, month: sm, day: sd }
+  }
+
+  // Mes completo (1ro al último día del mismo mes/año)
+  if (sd === 1 && sy === ey && sm === em) {
+    const lastDay = new Date(sy, sm, 0).getDate()
+    if (ed === lastDay) return { year: sy, month: sm }
+  }
+
+  // Año completo (1 Ene - 31 Dic)
+  if (sm === 1 && sd === 1 && em === 12 && ed === 31 && sy === ey) {
+    return { year: sy }
+  }
+
+  // Rango arbitrario: usar el año de inicio y filtrar en frontend si
+  // el backend no soporta rango libre; por ahora mandamos solo year
+  // para traer todo el año y luego la vista filtra localmente.
+  return { year: sy, desde: range.desde, hasta: range.hasta }
+}
 
 async function loadDashboard() {
   loading.value = true
   loadError.value = ''
   try {
-    const params = {
-      year: selectedYear.value,
-    }
-    if (selectedMonth.value !== null) params.month = selectedMonth.value
-    if (selectedDay.value !== null) params.day = selectedDay.value
+    const params = rangeToParams(dateRange.value)
     if (granularityTouchedByUser.value) params.chart_granularity = chartGranularity.value
 
     const response = await run(() => dashboardApi.get(params))
@@ -281,7 +277,7 @@ function onGranularityChange(value) {
   loadDashboard()
 }
 
-watch([selectedYear, selectedMonth, selectedDay], loadDashboard)
+watch(dateRange, loadDashboard, { deep: true })
 
 onMounted(loadDashboard)
 </script>

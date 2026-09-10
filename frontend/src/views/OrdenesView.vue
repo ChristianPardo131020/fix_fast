@@ -16,17 +16,7 @@
         <option value="">Todos los estados</option>
         <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
       </BaseSelect>
-      <BaseSelect v-model="selectedMonth" variant="card">
-        <option :value="null">Todos los meses</option>
-        <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
-      </BaseSelect>
-      <BaseSelect v-model="selectedDay" variant="card">
-        <option :value="null">Todos los días</option>
-        <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
-      </BaseSelect>
-      <BaseSelect v-model="selectedYear" variant="card">
-        <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
-      </BaseSelect>
+      <DateRangePicker v-model="dateRange" />
     </FilterBar>
 
     <div v-if="initialLoading" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -175,6 +165,7 @@ import ComboSelect from '../components/ComboSelect.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FabButton from '../components/FabButton.vue'
 import FilterBar from '../components/FilterBar.vue'
+import DateRangePicker from '../components/DateRangePicker.vue'
 import FormSection from '../components/FormSection.vue'
 import OrderCard from '../components/OrderCard.vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -194,27 +185,11 @@ const ui = useUiStore()
 const initialLoading = ref(true)
 const ordenes = ref([])
 const clientes = ref([])
-const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const now = new Date()
-const selectedYear = ref(now.getFullYear())
-const selectedMonth = ref(null)
-const selectedDay = ref(null)
 
-const availableYears = computed(() => {
-  const years = new Set([now.getFullYear()])
-  ordenes.value.forEach(orden => {
-    const d = parseUTC(orden.fecha_ingreso)
-    if (d) {
-      years.add(d.getFullYear())
-    }
-  })
-  return [...years].sort((a, b) => b - a)
-})
+import { toISO } from '../utils/dateRanges'
 
-const daysInSelectedMonth = computed(() => {
-  if (!selectedMonth.value) return 0
-  return new Date(selectedYear.value, selectedMonth.value, 0).getDate()
-})
+const dateRange = ref({ desde: '', hasta: '' })
 
 const search = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const statusFilter = ref(search.value ? '' : 'Pendiente')
@@ -300,11 +275,12 @@ const filteredOrdenes = computed(() => {
     const fecha = orden.fecha_ingreso ? parseUTC(orden.fecha_ingreso) : null
     if (!fecha) return false
 
-    const matchesYear = fecha.getFullYear() === selectedYear.value
-    const matchesMonth = selectedMonth.value === null || (fecha.getMonth() + 1) === selectedMonth.value
-    const matchesDay = selectedDay.value === null || fecha.getDate() === selectedDay.value
+    const fechaISO = toISO(fecha)
+    const matchesDate = (!dateRange.value.desde && !dateRange.value.hasta)
+      || (dateRange.value.desde && dateRange.value.hasta && fechaISO >= dateRange.value.desde && fechaISO <= dateRange.value.hasta)
+      || (dateRange.value.desde && !dateRange.value.hasta && fechaISO === dateRange.value.desde)
 
-    return matchesSearch && matchesStatus && matchesYear && matchesMonth && matchesDay
+    return matchesSearch && matchesStatus && matchesDate
   }).sort((a, b) => numeroOrdenValor(b) - numeroOrdenValor(a))
 })
 

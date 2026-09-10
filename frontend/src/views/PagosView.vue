@@ -9,17 +9,7 @@
     <FabButton label="Registrar ingreso" @click="openCreate" />
 
     <FilterBar>
-      <BaseSelect v-model="selectedMonth" variant="card">
-        <option :value="null">Todos los meses</option>
-        <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
-      </BaseSelect>
-      <BaseSelect v-if="selectedMonth !== null" v-model="selectedDay" variant="card">
-        <option :value="null">Todos los días</option>
-        <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
-      </BaseSelect>
-      <BaseSelect v-model="selectedYear" variant="card">
-        <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
-      </BaseSelect>
+      <DateRangePicker v-model="dateRange" />
       <div class="flex flex-col gap-3 sm:ml-auto sm:flex-row">
         <SearchField v-model="filters.search" class="sm:w-72" placeholder="Buscar por orden, referencia, metodo o categoria" />
         <BaseSelect v-model="filters.origen" variant="card" class="sm:w-48">
@@ -180,6 +170,7 @@ import ComboSelect from '../components/ComboSelect.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FabButton from '../components/FabButton.vue'
 import FilterBar from '../components/FilterBar.vue'
+import DateRangePicker from '../components/DateRangePicker.vue'
 import PageHeader from '../components/PageHeader.vue'
 import SearchField from '../components/SearchField.vue'
 import StatCard from '../components/StatCard.vue'
@@ -207,11 +198,13 @@ const origenTipo = ref('orden')
 const vincularInventario = ref(false)
 const productosInventario = ref([])
 
-const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+import { toISO } from '../utils/dateRanges'
+
 const now = new Date()
-const selectedYear = ref(now.getFullYear())
-const selectedMonth = ref(now.getMonth() + 1)
-const selectedDay = ref(now.getDate())
+const dateRange = ref({
+  desde: toISO(now),
+  hasta: toISO(now),
+})
 
 function localNow() {
   const d = new Date()
@@ -220,20 +213,6 @@ function localNow() {
 
 const filters = reactive({ search: '', origen: '' })
 const form = reactive({ orden_id: '', categoria: 'venta', valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '', producto_id: '', cantidad: 1, fecha: localNow() })
-
-const availableYears = computed(() => {
-  const years = new Set([now.getFullYear()])
-  unifiedRows.value.forEach(row => {
-    const d = parseUTC(row.fecha)
-    if (d) years.add(d.getFullYear())
-  })
-  return [...years].sort((a, b) => b - a)
-})
-
-const daysInSelectedMonth = computed(() => {
-  if (!selectedMonth.value) return 0
-  return new Date(selectedYear.value, selectedMonth.value, 0).getDate()
-})
 
 const categoriasIngreso = computed(() => {
   if (categoriasDinamicas.value.length) {
@@ -348,11 +327,12 @@ const filteredRows = computed(() => {
     const fecha = parseUTC(row.fecha)
     if (!fecha) return false
 
-    const matchesYear = fecha.getFullYear() === selectedYear.value
-    const matchesMonth = selectedMonth.value === null || (fecha.getMonth() + 1) === selectedMonth.value
-    const matchesDay = selectedDay.value === null || fecha.getDate() === selectedDay.value
+    const fechaISO = toISO(fecha)
+    const matchesDate = (!dateRange.value.desde && !dateRange.value.hasta)
+      || (dateRange.value.desde && dateRange.value.hasta && fechaISO >= dateRange.value.desde && fechaISO <= dateRange.value.hasta)
+      || (dateRange.value.desde && !dateRange.value.hasta && fechaISO === dateRange.value.desde)
 
-    return matchesSearch && matchesOrigen && matchesYear && matchesMonth && matchesDay
+    return matchesSearch && matchesOrigen && matchesDate
   })
 })
 
