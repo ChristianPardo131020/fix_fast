@@ -1,9 +1,10 @@
+from typing import Union
 from uuid import UUID
 
 from pydantic import BaseModel
 
 class UsuarioMeResponse(BaseModel):
-    id: UUID
+    id: Union[UUID, int, str]
     nombre: str
     email: str
     rol: str

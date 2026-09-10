@@ -1,11 +1,11 @@
 <template>
   <BaseCard
     content-class="p-4"
-    class="flex flex-col transition hover:-translate-y-0.5 hover:shadow-lift"
-    :style="{ borderLeftColor: accentColor, borderLeftWidth: '3px' }"
+    class="flex flex-col animate-fade-up transition duration-200 hover:-translate-y-1 hover:shadow-lift"
+    :style="cardStyle"
   >
     <div class="flex items-center justify-between gap-2">
-      <span class="font-mono text-xs font-medium tracking-wide text-slate-400">ORD-{{ orden.id }}</span>
+      <span class="font-mono text-xs font-medium tracking-wide text-slate-400">N° {{ orden.numero_orden || orden.id }}</span>
       <StatusBadge :value="orden.estado || 'recibido'" />
     </div>
 
@@ -33,6 +33,20 @@
       </div>
     </div>
 
+    <!-- Progreso de pago: acerca visualmente la meta de cobrar la orden
+         (Efecto de Tendencia a la Meta + Zeigarnik: lo incompleto se nota). -->
+    <div v-if="Number(orden.valor) > 0" class="mt-3">
+      <div class="mb-1.5 flex items-center justify-between gap-2 text-xs">
+        <span class="font-medium text-slate-400">{{ esPagado ? 'Pagado' : `Pagado ${pctLabel}` }}</span>
+        <span class="font-semibold text-slate-700 dark:text-slate-200">
+          {{ formatCurrency(abonado) }} <span class="font-normal text-slate-400">/ {{ formatCurrency(orden.valor) }}</span>
+        </span>
+      </div>
+      <div class="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <div class="h-full rounded-full transition-all duration-500" :class="esPagado ? 'bg-green-500' : 'bg-brand-500'" :style="{ width: `${pctPago}%` }" />
+      </div>
+    </div>
+
     <div v-if="cambiandoEstado" class="mt-4 flex items-center gap-2">
       <BaseInput v-model="nuevoEstado" type="select" class="flex-1">
         <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
@@ -43,9 +57,10 @@
 
     <div class="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
       <BaseButton variant="secondary" size="sm" icon="edit" @click="$emit('edit', orden)">Editar</BaseButton>
-      <BaseButton variant="secondary" size="sm" icon="payments" @click="$emit('pagar', orden)">Registrar pago</BaseButton>
+      <BaseButton size="sm" icon="payments" @click="$emit('pagar', orden)">Registrar pago</BaseButton>
       <BaseButton variant="ghost" size="sm" icon="refresh" @click="abrirCambioEstado">Cambiar estado</BaseButton>
       <BaseButton variant="ghost" size="sm" icon="eye" @click="$emit('detalles', orden)">Ver detalles</BaseButton>
+      <BaseButton variant="ghost" size="sm" icon="trash" class="col-span-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10" @click="$emit('eliminar', orden)">Eliminar</BaseButton>
     </div>
   </BaseCard>
 </template>
@@ -63,9 +78,10 @@ const props = defineProps({
   orden: { type: Object, required: true },
   clienteNombre: { type: String, default: 'Cliente' },
   estados: { type: Array, required: true },
+  index: { type: Number, default: 0 },
 })
 
-const emit = defineEmits(['edit', 'pagar', 'detalles', 'cambiar-estado'])
+const emit = defineEmits(['edit', 'pagar', 'detalles', 'cambiar-estado', 'eliminar'])
 
 const { formatCurrency, formatDate } = useFormatters()
 
@@ -87,8 +103,16 @@ function confirmarEstado() {
 // los charts sean consistentes.
 const accentColor = computed(() => resolveEstado(props.orden.estado).color)
 
+// Acento izquierdo por estado + retardo escalonado de entrada (el grid
+// de OrdenesView pasa `index` para que las tarjetas aparezcan en cascada).
+const cardStyle = computed(() => ({
+  borderLeftColor: accentColor.value,
+  borderLeftWidth: '3px',
+  animationDelay: `${Math.min(props.index, 12) * 45}ms`,
+}))
+
 const estadoKey = computed(() => resolveEstado(props.orden.estado).key)
-const esFinal = computed(() => estadoKey.value === 'entregado' || estadoKey.value === 'cancelado')
+const esFinal = computed(() => ['entregado', 'entregado_sr', 'cancelado'].includes(estadoKey.value))
 
 // Si la orden ya tiene fecha de entrega, "dias en taller" es la duracion
 // real de la reparacion (fecha_entrega - fecha_ingreso), no crece para
@@ -123,4 +147,14 @@ const prioridadClasses = computed(() => ({
   orange: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
   slate: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
 }[prioridad.value?.tone]))
+
+// Progreso de cobro (visual, no toca el dato de saldo del backend).
+const abonado = computed(() => Math.max(Number(props.orden.valor || 0) - Number(props.orden.saldo || 0), 0))
+const pctPago = computed(() => {
+  const valor = Number(props.orden.valor || 0)
+  if (valor <= 0) return 0
+  return Math.min(Math.max((abonado.value / valor) * 100, 0), 100)
+})
+const esPagado = computed(() => Number(props.orden.saldo || 0) <= 0)
+const pctLabel = computed(() => `${Math.round(pctPago.value)}%`)
 </script>

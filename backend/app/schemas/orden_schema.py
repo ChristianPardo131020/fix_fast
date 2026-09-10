@@ -24,10 +24,13 @@ class OrdenBase(BaseModel):
 
 class OrdenCreate(OrdenBase):
     fecha_ingreso: Optional[datetime] = None
+    fecha_entrega: Optional[datetime] = None
 
 class OrdenResponse(OrdenBase):
     id: int
-    fecha_ingreso: datetime
+    fecha_ingreso: Optional[datetime] = None
+    fecha_entrega: Optional[datetime] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

@@ -12,10 +12,7 @@
 
     <BaseCard content-class="p-4">
       <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <label class="relative block md:w-80">
-          <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-          <input v-model="search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por nombre, telefono o direccion" />
-        </label>
+        <SearchField v-model="search" class="md:w-80" placeholder="Buscar por nombre, telefono o direccion" />
         <p class="text-sm text-slate-500">{{ filteredClientes.length }} clientes</p>
       </div>
 
@@ -63,7 +60,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AppIcon from '../components/AppIcon.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
 import BaseInput from '../components/BaseInput.vue'
@@ -72,9 +68,11 @@ import BaseTable from '../components/BaseTable.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FabButton from '../components/FabButton.vue'
 import PageHeader from '../components/PageHeader.vue'
+import SearchField from '../components/SearchField.vue'
 import { clientesApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { useUiStore } from '../stores/ui'
+import { normalizarTexto } from '../utils/texto'
 
 const route = useRoute()
 const router = useRouter()
@@ -99,12 +97,12 @@ const columns = [
 ]
 
 const filteredClientes = computed(() => {
-  const term = search.value.toLowerCase().trim()
+  const term = normalizarTexto(search.value)
   if (!term) return clientes.value
   return clientes.value.filter((cliente) => (
-    cliente.nombre?.toLowerCase().includes(term)
-    || cliente.telefono?.toLowerCase().includes(term)
-    || cliente.direccion?.toLowerCase().includes(term)
+    normalizarTexto(cliente.nombre).includes(term)
+    || normalizarTexto(cliente.telefono).includes(term)
+    || normalizarTexto(cliente.direccion).includes(term)
   ))
 })
 

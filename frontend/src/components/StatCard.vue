@@ -1,11 +1,11 @@
 <template>
-  <BaseCard content-class="p-5" class="transition hover:-translate-y-0.5 hover:shadow-lift">
+  <BaseCard content-class="p-5" class="group relative transition hover:-translate-y-0.5 hover:shadow-lift hover:z-50" :class="{ 'cursor-help': desglose.length }">
     <div class="flex items-start justify-between gap-4">
       <div class="min-w-0">
         <p class="truncate text-sm font-medium text-slate-500 dark:text-slate-400">{{ label }}</p>
-        <p class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">{{ value }}</p>
+        <p class="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-slate-950 dark:text-white">{{ animatedValue }}</p>
       </div>
-      <div :class="toneClass" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+      <div :class="toneClass" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110">
         <AppIcon :name="icon" class="h-5 w-5" />
       </div>
     </div>
@@ -18,6 +18,28 @@
     </div>
 
     <p v-if="hint" class="mt-3 text-xs text-slate-500 dark:text-slate-400">{{ hint }}</p>
+
+    <!-- Resumen al pasar el mouse: desglose del KPI (ingresos por origen,
+         egresos por categoria, ordenes por estado, etc.). Solo aparece si
+         el backend mando un desglose para esta metrica. -->
+    <div
+      v-if="desglose.length"
+      class="pointer-events-none absolute inset-x-0 top-full z-30 mt-2 translate-y-1 opacity-0 transition duration-150 group-hover:translate-y-0 group-hover:opacity-100"
+    >
+      <div class="rounded-xl border border-slate-200 bg-white p-3 shadow-lift dark:border-slate-700 dark:bg-slate-800">
+        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{{ label }}</p>
+        <dl class="space-y-1">
+          <div
+            v-for="row in desglose"
+            :key="row.label"
+            class="flex items-center justify-between gap-6 text-xs text-slate-600 dark:text-slate-300"
+          >
+            <dt>{{ row.label }}</dt>
+            <dd class="font-medium tabular-nums text-slate-900 dark:text-white">{{ formatRow(row) }}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
   </BaseCard>
 </template>
 
@@ -25,6 +47,8 @@
 import { computed } from 'vue'
 import AppIcon from './AppIcon.vue'
 import BaseCard from './BaseCard.vue'
+import { useFormatters } from '../composables/useFormatters'
+import { useCountUp } from '../composables/useCountUp'
 
 const props = defineProps({
   label: { type: String, required: true },
@@ -39,7 +63,22 @@ const props = defineProps({
   // Para metricas donde "subir" es malo (ej. gastos, equipos atrasados):
   // invierte el color del badge sin invertir la flecha/el signo.
   invert: { type: Boolean, default: false },
+  // Filas del resumen que se muestra al pasar el mouse. Shape del backend:
+  // { label, valor, formato: 'moneda'|'entero'|'porcentaje' }.
+  desglose: { type: Array, default: () => [] },
 })
+
+const { formatCurrency, formatNumber } = useFormatters()
+
+// El KPI entra ya formateado como string ("$1.234.567", "12%", "3 dias");
+// useCountUp lo anima sin cambiar la prop `value` ni su formato.
+const animatedValue = useCountUp(() => props.value)
+
+function formatRow(row) {
+  if (row.formato === 'entero') return formatNumber(row.valor)
+  if (row.formato === 'porcentaje') return `${row.valor}%`
+  return formatCurrency(row.valor)
+}
 
 const toneClass = computed(() => ({
   teal: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',

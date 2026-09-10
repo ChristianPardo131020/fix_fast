@@ -23,8 +23,9 @@ const tones = {
   pendiente: { classes: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300', dot: 'bg-slate-500' },
   listo: { classes: 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300', dot: 'bg-green-500' },
   entregado: { classes: 'bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300', dot: 'bg-purple-500' },
+  entregado_sr: { classes: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300', dot: 'bg-orange-500' },
   cancelado: { classes: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300', dot: 'bg-red-500' },
 }
 
-const tone = computed(() => tones[estado.value.key])
+const tone = computed(() => tones[estado.value.key] || tones.pendiente)
 </script>

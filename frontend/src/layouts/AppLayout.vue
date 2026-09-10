@@ -1,25 +1,34 @@
 <template>
   <div class="min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <!-- Ambiente de fondo: orbes de color difuminados y en lento movimiento.
+         Solo decoración (aria-hidden + pointer-events-none), no afecta el
+         scroll ni el contenido. -->
+    <div aria-hidden="true" class="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      <div class="absolute -top-28 -left-24 h-96 w-96 rounded-full bg-brand-500/10 blur-3xl animate-blob dark:bg-brand-500/15" />
+      <div class="absolute top-1/3 -right-28 h-[26rem] w-[26rem] rounded-full bg-purple-500/10 blur-3xl animate-blob [animation-delay:2s] dark:bg-purple-500/15" />
+      <div class="absolute -bottom-32 left-1/3 h-96 w-96 rounded-full bg-teal-500/10 blur-3xl animate-blob [animation-delay:4s] dark:bg-teal-500/10" />
+    </div>
+
     <aside
       :class="[
         ui.sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         ui.sidebarCollapsed ? 'lg:w-20' : 'lg:w-72',
       ]"
-      class="fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-slate-200 bg-white/95 shadow-soft transition-all duration-200 dark:border-slate-800 dark:bg-slate-950/95"
+      class="fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-white/10 bg-gradient-to-b from-brand-600 to-brand-700 shadow-xl shadow-brand-900/25 transition-all duration-200 dark:from-brand-700 dark:to-brand-800"
     >
-      <div class="flex h-16 items-center gap-3 border-b border-slate-100 px-5 dark:border-slate-800" :class="ui.sidebarCollapsed && 'lg:justify-center lg:px-0'">
-        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
+      <div class="flex h-16 items-center gap-3 border-b border-white/10 px-5" :class="ui.sidebarCollapsed && 'lg:justify-center lg:px-0'">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-sm ring-1 ring-white/30">
           <img src="/logo-mark.png" alt="FixFast" class="h-full w-full object-contain" />
         </div>
         <div v-if="!ui.sidebarCollapsed">
-          <p class="text-sm font-semibold leading-4">FixFast</p>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Repair ERP</p>
+          <p class="text-sm font-semibold leading-4 text-white">FixFast</p>
+          <p class="text-xs text-brand-100">Repair ERP</p>
         </div>
       </div>
 
-      <nav class="flex-1 space-y-5 overflow-y-auto px-3 py-4 scrollbar-thin">
+      <nav class="flex-1 space-y-5 overflow-y-auto px-3 py-4 scrollbar-dark">
         <div v-for="group in navGroups" :key="group.label || 'root'">
-          <p v-if="group.label && !ui.sidebarCollapsed" class="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <p v-if="group.label && !ui.sidebarCollapsed" class="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wide text-brand-100">
             {{ group.label }}
           </p>
           <div class="space-y-0.5">
@@ -28,16 +37,15 @@
               :key="item.route"
               :to="{ name: item.route }"
               :title="item.name"
-              class="relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition"
+              class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition"
               :class="[
                 isActive(item)
-                  ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white',
+                  ? 'bg-white font-semibold text-brand-700 shadow-sm'
+                  : 'text-white/90 hover:bg-white/10 hover:text-white',
                 ui.sidebarCollapsed && 'lg:justify-center',
               ]"
               @click="ui.closeSidebar"
             >
-              <span class="absolute inset-y-1 left-0 w-0.5 rounded-full transition-colors" :class="isActive(item) ? 'bg-brand-500' : 'bg-transparent'" />
               <AppIcon :name="item.icon" class="h-5 w-5 shrink-0" />
               <span v-if="!ui.sidebarCollapsed" class="truncate">{{ item.name }}</span>
             </RouterLink>
@@ -45,14 +53,14 @@
         </div>
       </nav>
 
-      <div class="border-t border-slate-100 p-3 dark:border-slate-800">
-        <div v-if="!ui.sidebarCollapsed" class="mb-3 rounded-xl bg-slate-100 p-3 dark:bg-slate-900">
-          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">API activa</p>
-          <p class="mt-1 truncate text-sm text-slate-700 dark:text-slate-200">{{ apiUrl }}</p>
+      <div class="border-t border-white/10 p-3">
+        <div v-if="!ui.sidebarCollapsed" class="mb-3 rounded-xl bg-white/10 p-3 ring-1 ring-inset ring-white/15">
+          <p class="text-xs font-semibold uppercase tracking-wide text-brand-100">API activa</p>
+          <p class="mt-1 truncate text-sm text-white">{{ apiUrl }}</p>
         </div>
         <button
           type="button"
-          class="hidden w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 lg:flex dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+          class="hidden w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-100 transition hover:bg-white/10 hover:text-white lg:flex"
           :class="ui.sidebarCollapsed && 'lg:justify-center'"
           :title="ui.sidebarCollapsed ? 'Expandir menu' : 'Colapsar menu'"
           @click="ui.toggleSidebarCollapsed"
@@ -65,7 +73,7 @@
 
     <div v-if="ui.sidebarOpen" class="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" @click="ui.closeSidebar" />
 
-    <div class="transition-all duration-200" :class="ui.sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'">
+    <div class="relative z-10 transition-all duration-200" :class="ui.sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'">
       <header class="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-slate-200 bg-white/85 px-4 backdrop-blur md:px-6 dark:border-slate-800 dark:bg-slate-950/85">
         <button class="shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden dark:text-slate-300 dark:hover:bg-slate-900" type="button" @click="ui.toggleSidebar">
           <AppIcon name="menu" />
@@ -88,7 +96,7 @@
             <AppIcon :name="ui.darkMode ? 'sun' : 'moon'" />
           </button>
           <div class="hidden items-center gap-3 rounded-lg border border-slate-200 px-3 py-1.5 md:flex dark:border-slate-800">
-            <div class="h-7 w-7 rounded-full bg-brand-600 text-center text-xs font-bold leading-7 text-white">{{ userInitial }}</div>
+            <div class="h-7 w-7 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-center text-xs font-bold leading-7 text-white shadow-sm shadow-brand-600/30">{{ userInitial }}</div>
             <div>
               <p class="text-sm font-medium leading-4">{{ auth.user?.name || 'Usuario' }}</p>
               <p class="text-xs text-slate-500 dark:text-slate-400">{{ auth.user?.role || '—' }}</p>

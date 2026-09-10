@@ -36,6 +36,7 @@
           <BaseButton variant="secondary" size="sm" icon="edit" @click="openEdit">Editar</BaseButton>
           <BaseButton variant="secondary" size="sm" icon="payments" @click="openPago">Registrar pago</BaseButton>
           <BaseButton variant="ghost" size="sm" icon="refresh" @click="abrirCambioEstado">Cambiar estado</BaseButton>
+          <BaseButton variant="ghost" size="sm" icon="trash" class="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10" @click="eliminarOrden">Eliminar</BaseButton>
         </div>
       </div>
 
@@ -46,6 +47,8 @@
         <BaseButton size="sm" :loading="cambiandoEstadoGuardando" @click="confirmarEstado">Guardar</BaseButton>
         <BaseButton variant="ghost" size="sm" @click="cambiandoEstado = false">Cancelar</BaseButton>
       </div>
+
+      <StatusStepper :estado="orden.estado" />
 
       <section class="grid gap-4 sm:grid-cols-3">
         <StatCard label="Valor total" :value="formatCurrency(orden.valor)" icon="cash" tone="brand" />
@@ -67,9 +70,26 @@
       </div>
 
       <!-- Resumen -->
-      <section v-if="activeTab === 'resumen'">
+      <section v-if="activeTab === 'resumen'" class="grid gap-4 md:grid-cols-2">
         <BaseCard title="Falla reportada" subtitle="Descripcion entregada por el cliente">
           <p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ orden.problema || 'Sin descripcion' }}</p>
+        </BaseCard>
+
+        <BaseCard title="Fechas de la orden" subtitle="Registro y tiempos de ingreso">
+          <dl class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Fecha de ingreso (equipo)</dt>
+              <dd class="mt-1 font-semibold text-slate-900 dark:text-white">{{ formatDate(orden.fecha_ingreso) }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Fecha registro (sistema)</dt>
+              <dd class="mt-1 font-semibold text-slate-900 dark:text-white">{{ formatDate(orden.created_at) }}</dd>
+            </div>
+            <div v-if="orden.fecha_entrega">
+              <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Fecha de entrega</dt>
+              <dd class="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">{{ formatDate(orden.fecha_entrega) }}</dd>
+            </div>
+          </dl>
         </BaseCard>
       </section>
 
@@ -138,25 +158,40 @@
     <!-- Editar orden -->
     <BaseModal v-model="editModalOpen" title="Editar orden" subtitle="Informacion tecnica y financiera del equipo.">
       <form class="grid gap-4" @submit.prevent="saveEdit">
-        <BaseInput v-model="editForm.cliente_id" label="Cliente" type="select" required>
-          <option value="">Selecciona un cliente</option>
-          <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">{{ cliente.nombre || cliente.name || `Cliente ${cliente.id}` }}</option>
-        </BaseInput>
-        <div class="grid gap-4 sm:grid-cols-3">
-          <BaseInput v-model="editForm.equipo" label="Equipo" required />
-          <BaseInput v-model="editForm.marca" label="Marca" />
-          <BaseInput v-model="editForm.modelo" label="Modelo" />
-        </div>
-        <BaseInput v-model="editForm.problema" label="Falla reportada" textarea required />
-        <div class="grid gap-4 sm:grid-cols-3">
-          <BaseInput v-model="editForm.numero_orden" label="Numero de orden" readonly />
-          <BaseInput v-model="editForm.estado" label="Estado" type="select">
-            <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
+        <FormSection label="Cliente">
+          <BaseInput v-model="editForm.cliente_id" label="Cliente" type="select" required>
+            <option value="">Selecciona un cliente</option>
+            <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">{{ cliente.nombre || cliente.name || `Cliente ${cliente.id}` }}</option>
           </BaseInput>
-          <BaseInput v-model="editForm.fecha_ingreso" label="Fecha de ingreso" type="datetime-local" />
-          <BaseInput v-model="editForm.valor" label="Valor total" type="number" />
-          <BaseInput v-model="editForm.saldo" label="Saldo pendiente" type="number" />
-        </div>
+        </FormSection>
+
+        <FormSection label="Equipo">
+          <div class="grid gap-4 sm:grid-cols-3">
+            <BaseInput v-model="editForm.equipo" label="Equipo" required />
+            <BaseInput v-model="editForm.marca" label="Marca" />
+            <BaseInput v-model="editForm.modelo" label="Modelo" />
+          </div>
+          <BaseInput v-model="editForm.problema" label="Falla reportada" textarea required />
+        </FormSection>
+
+        <FormSection label="Estado y fechas">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <BaseInput v-model="editForm.numero_orden" label="Numero de orden" readonly />
+            <BaseInput v-model="editForm.estado" label="Estado" type="select">
+              <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
+            </BaseInput>
+            <BaseInput v-model="editForm.fecha_ingreso" label="Fecha de ingreso" type="datetime-local" />
+            <BaseInput v-model="editForm.fecha_entrega" label="Fecha de entrega" type="datetime-local" placeholder="Sin fecha de entrega" />
+          </div>
+        </FormSection>
+
+        <FormSection label="Valores">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <BaseInput v-model="editForm.valor" label="Valor total" type="number" />
+            <BaseInput v-model="editForm.saldo" label="Saldo pendiente" type="number" />
+          </div>
+        </FormSection>
+
         <div class="flex justify-end gap-2">
           <BaseButton variant="secondary" @click="editModalOpen = false">Cancelar</BaseButton>
           <BaseButton type="submit" :loading="savingEdit">Guardar cambios</BaseButton>
@@ -217,8 +252,10 @@ import BaseInput from '../components/BaseInput.vue'
 import BaseModal from '../components/BaseModal.vue'
 import ComboSelect from '../components/ComboSelect.vue'
 import EmptyState from '../components/EmptyState.vue'
+import FormSection from '../components/FormSection.vue'
 import StatCard from '../components/StatCard.vue'
 import StatusBadge from '../components/StatusBadge.vue'
+import StatusStepper from '../components/StatusStepper.vue'
 import { clientesApi, ordenesApi, pagosApi, inventarioApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { ESTADOS_LABELS, resolveEstado } from '../constants/estados'
@@ -255,7 +292,7 @@ const nuevoEstado = ref('')
 
 const editModalOpen = ref(false)
 const savingEdit = ref(false)
-const editForm = reactive({ cliente_id: '', numero_orden: '', equipo: '', marca: '', modelo: '', problema: '', diagnostico: '', estado: 'Pendiente', valor: 0, saldo: 0, fecha_ingreso: '' })
+const editForm = reactive({ cliente_id: '', numero_orden: '', equipo: '', marca: '', modelo: '', problema: '', diagnostico: '', estado: 'Pendiente', valor: 0, saldo: 0, fecha_ingreso: '', fecha_entrega: '' })
 
 const pagoModalOpen = ref(false)
 const savingPago = ref(false)
@@ -365,9 +402,27 @@ const ABONO_INICIAL_MARCA = 'Abono inicial al crear la orden'
 
 const timelineEvents = computed(() => {
   if (!orden.value) return []
-  const events = [
-    { id: 'creada', label: 'Orden creada', detail: `${orden.value.equipo || 'Equipo'} ingreso al taller`, date: orden.value.fecha_ingreso, icon: 'orders' },
-  ]
+  const events = []
+
+  if (orden.value.fecha_ingreso) {
+    events.push({
+      id: 'ingreso',
+      label: 'Ingreso al taller',
+      detail: `${orden.value.equipo || 'Equipo'} recibido`,
+      date: orden.value.fecha_ingreso,
+      icon: 'orders',
+    })
+  }
+
+  if (orden.value.created_at) {
+    events.push({
+      id: 'creada',
+      label: 'Orden registrada en sistema',
+      detail: `Orden #${orden.value.numero_orden || orden.value.id} creada`,
+      date: orden.value.created_at,
+      icon: 'orders',
+    })
+  }
 
   pagosOrden.value.forEach((pago) => {
     const esAbonoInicial = pago.observaciones === ABONO_INICIAL_MARCA
@@ -394,7 +449,7 @@ const timelineEvents = computed(() => {
   // historial de estados: si tienen fecha_entrega pero ningun cambio de
   // estado a "Entregado" en el historial, se agrega igual (dato real,
   // solo que no vino del flujo de "Cambiar estado").
-  const yaTieneEntregaEnHistorial = historialEstados.value.some((c) => resolveEstado(c.estado_nuevo).key === 'entregado')
+  const yaTieneEntregaEnHistorial = historialEstados.value.some((c) => ['entregado', 'entregado_sr'].includes(resolveEstado(c.estado_nuevo).key))
   if (orden.value.fecha_entrega && !yaTieneEntregaEnHistorial) {
     events.push({ id: 'entrega', label: 'Equipo entregado', detail: 'Orden finalizada', date: orden.value.fecha_entrega, icon: 'check' })
   }
@@ -432,6 +487,7 @@ function ordenPayload(source) {
     saldo: source.saldo,
     tecnico_id: source.tecnico_id,
     fecha_ingreso: source.fecha_ingreso || null,
+    fecha_entrega: source.fecha_entrega || null,
   }
 }
 
@@ -460,6 +516,7 @@ function openEdit() {
     valor: orden.value.valor || 0,
     saldo: orden.value.saldo || 0,
     fecha_ingreso: isoToLocal(orden.value.fecha_ingreso),
+    fecha_entrega: orden.value.fecha_entrega ? isoToLocal(orden.value.fecha_entrega) : '',
   })
   editModalOpen.value = true
 }
@@ -467,7 +524,8 @@ function openEdit() {
 async function saveEdit() {
   savingEdit.value = true
   const fechaISO = editForm.fecha_ingreso ? new Date(editForm.fecha_ingreso).toISOString() : null
-  const payload = { ...editForm, cliente_id: Number(editForm.cliente_id), valor: Number(editForm.valor || 0), saldo: Number(editForm.saldo || 0), fecha_ingreso: fechaISO }
+  const fechaEntregaISO = editForm.fecha_entrega ? new Date(editForm.fecha_entrega).toISOString() : null
+  const payload = { ...editForm, cliente_id: Number(editForm.cliente_id), valor: Number(editForm.valor || 0), saldo: Number(editForm.saldo || 0), fecha_ingreso: fechaISO, fecha_entrega: fechaEntregaISO }
   try {
     await run(() => ordenesApi.update(orden.value.id, payload), 'Orden actualizada')
     editModalOpen.value = false
@@ -497,6 +555,16 @@ async function savePago() {
   } finally {
     savingPago.value = false
   }
+}
+
+async function eliminarOrden() {
+  const confirmed = await ui.confirm({
+    title: `Eliminar orden #${orden.value.numero_orden || orden.value.id}`,
+    message: `Se eliminará la orden de "${orden.value.equipo || 'Equipo'}" junto con todos sus pagos, historial de estados y repuestos asociados. Esta acción no se puede deshacer.`,
+  })
+  if (!confirmed) return
+  await run(() => ordenesApi.remove(orden.value.id), 'Orden eliminada')
+  router.push({ name: 'ordenes' })
 }
 
 async function loadOrden() {

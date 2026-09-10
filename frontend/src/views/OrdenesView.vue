@@ -10,56 +10,53 @@
 
     <FabButton label="Nueva orden" @click="openCreate" />
 
-    <BaseCard content-class="p-4">
-      <div class="grid gap-3 md:grid-cols-[1fr_160px_130px_100px_100px]">
-        <label class="relative block">
-          <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-          <input v-model="search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por cliente, equipo, falla o estado" />
-        </label>
-        <BaseInput v-model="statusFilter" type="select">
-          <option value="">Todos los estados</option>
-          <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
-        </BaseInput>
-        <select v-model="selectedMonth" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
-          <option :value="null">Todos los meses</option>
-          <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
-        </select>
-        <select v-model="selectedDay" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
-          <option :value="null">Todos los días</option>
-          <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
-        </select>
-        <select v-model="selectedYear" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
-          <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
-        </select>
-      </div>
-    </BaseCard>
+    <FilterBar>
+      <SearchField v-model="search" class="min-w-[13rem] flex-1" placeholder="Buscar por cliente, equipo, falla o estado" />
+      <BaseSelect v-model="statusFilter" variant="card" class="sm:w-40">
+        <option value="">Todos los estados</option>
+        <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
+      </BaseSelect>
+      <BaseSelect v-model="selectedMonth" variant="card">
+        <option :value="null">Todos los meses</option>
+        <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
+      </BaseSelect>
+      <BaseSelect v-model="selectedDay" variant="card">
+        <option :value="null">Todos los días</option>
+        <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
+      </BaseSelect>
+      <BaseSelect v-model="selectedYear" variant="card">
+        <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
+      </BaseSelect>
+    </FilterBar>
 
     <div v-if="initialLoading" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      <div v-for="n in 6" :key="n" class="animate-pulse rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-        <div class="h-5 w-24 rounded-full bg-slate-200 dark:bg-slate-800" />
+      <div v-for="n in 6" :key="n" class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div class="skeleton h-5 w-24 rounded-full" />
         <div class="mt-4 space-y-2">
-          <div class="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-800" />
-          <div class="h-3 w-1/2 rounded bg-slate-200 dark:bg-slate-800" />
+          <div class="skeleton h-4 w-3/4 rounded" />
+          <div class="skeleton h-3 w-1/2 rounded" />
         </div>
-        <div class="mt-5 h-12 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+        <div class="skeleton mt-5 h-12 rounded-lg" />
         <div class="mt-4 grid grid-cols-2 gap-2">
-          <div class="h-8 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
-          <div class="h-8 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+          <div class="skeleton h-8 rounded-lg" />
+          <div class="skeleton h-8 rounded-lg" />
         </div>
       </div>
     </div>
     <template v-else-if="filteredOrdenes.length">
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <OrderCard
-          v-for="orden in pagedOrdenes"
+          v-for="(orden, index) in pagedOrdenes"
           :key="orden.id"
           :orden="orden"
+          :index="index"
           :cliente-nombre="clienteNombre(orden)"
           :estados="estados"
           @edit="openEdit"
           @pagar="openPago"
           @detalles="openDetalles"
           @cambiar-estado="cambiarEstado"
+          @eliminar="eliminarOrden"
         />
       </div>
       <Paginator :page="currentPage" :total-pages="totalPages" :total-items="filteredOrdenes.length" @update:page="currentPage = $event" />
@@ -71,55 +68,67 @@
     <!-- Crear / editar orden -->
     <BaseModal v-model="modalOpen" :title="editingId ? 'Editar orden' : 'Nueva orden'" subtitle="Informacion tecnica y financiera del equipo.">
       <form class="grid gap-4" @submit.prevent="saveOrden">
-        <div>
+        <FormSection label="Cliente">
           <ComboSelect v-model="form.cliente_id" label="Cliente" placeholder="Buscar cliente por nombre..." :options="clienteOptions" required />
           <button
             type="button"
-            class="mt-1.5 text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
+            class="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
             @click="toggleNewCliente"
           >
             {{ showNewCliente ? 'Cancelar' : '+ El cliente no existe, crearlo' }}
           </button>
 
-          <div v-if="showNewCliente" class="mt-3 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 dark:border-slate-800 dark:bg-slate-900">
+          <div v-if="showNewCliente" class="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-2 dark:border-slate-800 dark:bg-slate-900">
             <BaseInput v-model="newCliente.nombre" label="Nombre del cliente" placeholder="Nombre completo" required />
             <BaseInput v-model="newCliente.telefono" label="Telefono" />
             <div class="sm:col-span-2 flex justify-end">
               <BaseButton type="button" size="sm" :loading="savingCliente" @click="saveNewCliente">Guardar cliente</BaseButton>
             </div>
           </div>
-        </div>
-        <div class="grid gap-4 sm:grid-cols-3">
-          <BaseInput v-model="form.equipo" label="Equipo" placeholder="Celular, tablet..." required />
-          <BaseInput v-model="form.marca" label="Marca" />
-          <BaseInput v-model="form.modelo" label="Modelo" />
-        </div>
-        <BaseInput v-model="form.problema" label="Falla reportada" textarea required />
-        <div class="grid gap-4 sm:grid-cols-3">
-          <BaseInput v-model="form.numero_orden" label="Numero de orden" readonly :hint="editingId ? '' : 'Consecutivo automático'" />
-          <BaseInput v-model="form.estado" label="Estado" type="select">
-            <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
-          </BaseInput>
-          <BaseInput v-model="form.fecha_ingreso" label="Fecha de ingreso" type="datetime-local" />
-          <BaseInput v-model="form.valor" label="Valor total" type="number" />
-          <BaseInput
-            v-model="saldoDisplay"
-            label="Saldo pendiente"
-            type="number"
-            :disabled="!editingId"
-            :hint="!editingId ? 'Valor total menos abono' : ''"
-          />
-        </div>
-        <div v-if="!editingId" class="grid gap-4 sm:grid-cols-2">
-          <BaseInput v-model="form.abono" label="Abono inicial" type="number" hint="Se registra tambien como pago en Pagos" />
-          <BaseInput v-model="form.abono_metodo_pago" label="Metodo de pago del abono" type="select">
-            <option value="Efectivo">Efectivo</option>
-            <option value="Transferencia">Transferencia</option>
-            <option value="Nequi">Nequi</option>
-            <option value="Daviplata">Daviplata</option>
-            <option value="Tarjeta">Tarjeta</option>
-          </BaseInput>
-        </div>
+        </FormSection>
+
+        <FormSection label="Equipo">
+          <div class="grid gap-4 sm:grid-cols-3">
+            <BaseInput v-model="form.equipo" label="Equipo" placeholder="Celular, tablet..." required />
+            <BaseInput v-model="form.marca" label="Marca" />
+            <BaseInput v-model="form.modelo" label="Modelo" />
+          </div>
+          <BaseInput v-model="form.problema" label="Falla reportada" textarea required />
+        </FormSection>
+
+        <FormSection label="Estado y fecha">
+          <div class="grid gap-4 sm:grid-cols-3">
+            <BaseInput v-model="form.numero_orden" label="Numero de orden" readonly :hint="editingId ? '' : 'Consecutivo automático'" />
+            <BaseInput v-model="form.estado" label="Estado" type="select">
+              <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
+            </BaseInput>
+            <BaseInput v-model="form.fecha_ingreso" label="Fecha de ingreso" type="datetime-local" />
+          </div>
+        </FormSection>
+
+        <FormSection label="Valores">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <BaseInput v-model="form.valor" label="Valor total" type="number" />
+            <BaseInput
+              v-model="saldoDisplay"
+              label="Saldo pendiente"
+              type="number"
+              :disabled="!editingId"
+              :hint="!editingId ? 'Valor total menos abono' : ''"
+            />
+          </div>
+          <div v-if="!editingId" class="grid gap-4 sm:grid-cols-2">
+            <BaseInput v-model="form.abono" label="Abono inicial" type="number" hint="Se registra tambien como pago en Pagos" />
+            <BaseInput v-model="form.abono_metodo_pago" label="Metodo de pago del abono" type="select">
+              <option value="Efectivo">Efectivo</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Nequi">Nequi</option>
+              <option value="Daviplata">Daviplata</option>
+              <option value="Tarjeta">Tarjeta</option>
+            </BaseInput>
+          </div>
+        </FormSection>
+
         <div class="flex justify-end gap-2">
           <BaseButton variant="secondary" @click="modalOpen = false">Cancelar</BaseButton>
           <BaseButton type="submit" :loading="saving">{{ editingId ? 'Actualizar' : 'Crear orden' }}</BaseButton>
@@ -156,14 +165,17 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AppIcon from '../components/AppIcon.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
 import BaseInput from '../components/BaseInput.vue'
 import BaseModal from '../components/BaseModal.vue'
+import BaseSelect from '../components/BaseSelect.vue'
+import SearchField from '../components/SearchField.vue'
 import ComboSelect from '../components/ComboSelect.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FabButton from '../components/FabButton.vue'
+import FilterBar from '../components/FilterBar.vue'
+import FormSection from '../components/FormSection.vue'
 import OrderCard from '../components/OrderCard.vue'
 import PageHeader from '../components/PageHeader.vue'
 import Paginator from '../components/Paginator.vue'
@@ -171,11 +183,14 @@ import { ESTADOS_LABELS } from '../constants/estados'
 import { clientesApi, ordenesApi, pagosApi } from '../api/resources'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
+import { useUiStore } from '../stores/ui'
+import { normalizarTexto } from '../utils/texto'
 
 const route = useRoute()
 const router = useRouter()
 const { formatCurrency, parseUTC } = useFormatters()
 const { loading, run } = useApiState()
+const ui = useUiStore()
 const initialLoading = ref(true)
 const ordenes = ref([])
 const clientes = ref([])
@@ -260,17 +275,25 @@ const savingPago = ref(false)
 const pagoTarget = ref(null)
 const pagoForm = reactive({ valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '', fecha: localNow() })
 
+// Valor numerico del numero_orden para ordenar de mayor a menor. Los
+// numeros de orden son strings de digitos (ej. "17761"); las ordenes
+// sin numero (dato legacy) caen al final.
+function numeroOrdenValor(orden) {
+  const n = parseInt(orden.numero_orden, 10)
+  return Number.isNaN(n) ? -Infinity : n
+}
+
 const filteredOrdenes = computed(() => {
-  const term = search.value.toLowerCase().trim()
+  const term = normalizarTexto(search.value)
   return ordenes.value.filter((orden) => {
     const matchesSearch = !term || (
-      orden.equipo?.toLowerCase().includes(term)
-      || orden.marca?.toLowerCase().includes(term)
-      || orden.modelo?.toLowerCase().includes(term)
-      || orden.problema?.toLowerCase().includes(term)
-      || orden.estado?.toLowerCase().includes(term)
-      || orden.numero_orden?.toLowerCase().includes(term)
-      || clienteNombre(orden).toLowerCase().includes(term)
+      normalizarTexto(orden.equipo).includes(term)
+      || normalizarTexto(orden.marca).includes(term)
+      || normalizarTexto(orden.modelo).includes(term)
+      || normalizarTexto(orden.problema).includes(term)
+      || normalizarTexto(orden.estado).includes(term)
+      || normalizarTexto(orden.numero_orden).includes(term)
+      || normalizarTexto(clienteNombre(orden)).includes(term)
     )
     const matchesStatus = !statusFilter.value || orden.estado === statusFilter.value
 
@@ -282,7 +305,7 @@ const filteredOrdenes = computed(() => {
     const matchesDay = selectedDay.value === null || fecha.getDate() === selectedDay.value
 
     return matchesSearch && matchesStatus && matchesYear && matchesMonth && matchesDay
-  })
+  }).sort((a, b) => numeroOrdenValor(b) - numeroOrdenValor(a))
 })
 
 const PAGE_SIZE = 12
@@ -474,6 +497,16 @@ async function cambiarEstado({ orden, estado }) {
     }),
     'Estado actualizado',
   )
+  await loadData()
+}
+
+async function eliminarOrden(orden) {
+  const confirmed = await ui.confirm({
+    title: `Eliminar orden #${orden.numero_orden || orden.id}`,
+    message: `Se eliminará la orden de "${orden.equipo || 'Equipo'}" junto con todos sus pagos, historial de estados y repuestos asociados. Esta acción no se puede deshacer.`,
+  })
+  if (!confirmed) return
+  await run(() => ordenesApi.remove(orden.id), 'Orden eliminada')
   await loadData()
 }
 

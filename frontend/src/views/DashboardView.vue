@@ -1,32 +1,20 @@
 <template>
   <div class="space-y-6">
-    <PageHeader title="Resumen general" subtitle="El estado de tu taller, sin vueltas.">
-      <template #actions>
-        <div class="flex items-center gap-2">
-          <select
-            v-model="selectedMonth"
-            class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
-          >
-            <option :value="null">Todos los meses</option>
-            <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
-          </select>
-          <select
-            v-if="selectedMonth !== null"
-            v-model="selectedDay"
-            class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
-          >
-            <option :value="null">Todos los días</option>
-            <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
-          </select>
-          <select
-            v-model="selectedYear"
-            class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
-          >
-            <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
-          </select>
-        </div>
-      </template>
-    </PageHeader>
+    <PageHeader title="Resumen general" subtitle="El estado de tu taller, sin vueltas." />
+
+    <FilterBar label="Periodo">
+      <BaseSelect v-model="selectedMonth" variant="card">
+        <option :value="null">Todos los meses</option>
+        <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
+      </BaseSelect>
+      <BaseSelect v-if="selectedMonth !== null" v-model="selectedDay" variant="card">
+        <option :value="null">Todos los días</option>
+        <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
+      </BaseSelect>
+      <BaseSelect v-model="selectedYear" variant="card">
+        <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
+      </BaseSelect>
+    </FilterBar>
 
     <!-- Acciones rapidas: llevan a la vista correspondiente con el modal
          de creacion ya abierto (?crear=1), en vez de duplicar los 3
@@ -41,15 +29,15 @@
 
     <div v-if="loading" class="space-y-6">
       <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <div v-for="n in 5" :key="n" class="animate-pulse rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-          <div class="h-3 w-24 rounded bg-slate-200 dark:bg-slate-800" />
-          <div class="mt-3 h-7 w-20 rounded bg-slate-200 dark:bg-slate-800" />
+        <div v-for="n in 5" :key="n" class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <div class="skeleton h-3 w-24 rounded" />
+          <div class="skeleton mt-3 h-7 w-20 rounded" />
         </div>
       </section>
-      <div class="h-[400px] animate-pulse rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" />
+      <div class="skeleton h-[400px] rounded-xl border border-slate-200 dark:border-slate-800" />
       <section class="grid gap-6 xl:grid-cols-2">
-        <div class="h-72 animate-pulse rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" />
-        <div class="h-72 animate-pulse rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" />
+        <div class="skeleton h-72 rounded-xl border border-slate-200 dark:border-slate-800" />
+        <div class="skeleton h-72 rounded-xl border border-slate-200 dark:border-slate-800" />
       </section>
     </div>
 
@@ -62,6 +50,7 @@
           icon="payments"
           tone="brand"
           :trend="dashboard.kpis.ingresos"
+          :desglose="dashboard.kpis.ingresos.desglose"
           :hint="periodo.label"
         />
         <StatCard
@@ -70,6 +59,7 @@
           icon="wallet"
           :tone="Number(dashboard.kpis.utilidad.valor) >= 0 ? 'green' : 'rose'"
           :trend="dashboard.kpis.utilidad"
+          :desglose="dashboard.kpis.utilidad.desglose"
           :hint="`Margen: ${dashboard.kpis.margen_pct.valor}%`"
         />
         <StatCard
@@ -78,6 +68,7 @@
           icon="cash"
           tone="orange"
           :trend="dashboard.kpis.saldo_pendiente"
+          :desglose="dashboard.kpis.saldo_pendiente.desglose"
           invert
           hint="De ordenes del periodo"
         />
@@ -87,6 +78,7 @@
           icon="wrench"
           tone="sky"
           :trend="dashboard.kpis.equipos_reparacion"
+          :desglose="dashboard.kpis.equipos_reparacion.desglose"
           hint="Ingresaron en el periodo"
         />
         <StatCard
@@ -95,6 +87,7 @@
           icon="check"
           tone="green"
           :trend="dashboard.kpis.equipos_listos"
+          :desglose="dashboard.kpis.equipos_listos.desglose"
           hint="Ingresaron en el periodo"
         />
       </section>
@@ -158,6 +151,7 @@
             icon="trend-down"
             tone="rose"
             :trend="dashboard.performance.gastos_periodo"
+            :desglose="dashboard.performance.gastos_periodo.desglose"
             invert
             hint="Egresos de caja"
           />
@@ -196,7 +190,9 @@ import OrdersStatusPanel from '../components/dashboard/OrdersStatusPanel.vue'
 import PaymentMethodsPanel from '../components/dashboard/PaymentMethodsPanel.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
+import BaseSelect from '../components/BaseSelect.vue'
 import EmptyState from '../components/EmptyState.vue'
+import FilterBar from '../components/FilterBar.vue'
 import PageHeader from '../components/PageHeader.vue'
 import StatCard from '../components/StatCard.vue'
 import { dashboardApi } from '../api/resources'

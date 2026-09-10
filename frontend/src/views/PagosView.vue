@@ -2,24 +2,33 @@
   <div class="space-y-6">
     <PageHeader title="Ingresos" subtitle="Pagos de ordenes y ventas de mostrador (pilas, accesorios, servicios rapidos), todo en un solo lugar.">
       <template #actions>
-        <div class="flex items-center gap-2">
-           <select v-model="selectedMonth" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-             <option :value="null">Todos los meses</option>
-             <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
-           </select>
-           <select v-if="selectedMonth !== null" v-model="selectedDay" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-             <option :value="null">Todos los días</option>
-             <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
-           </select>
-           <select v-model="selectedYear" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-             <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
-           </select>
-           <BaseButton icon="plus" @click="openCreate">Nuevo ingreso</BaseButton>
-        </div>
+        <BaseButton icon="plus" @click="openCreate">Nuevo ingreso</BaseButton>
       </template>
     </PageHeader>
 
     <FabButton label="Registrar ingreso" @click="openCreate" />
+
+    <FilterBar>
+      <BaseSelect v-model="selectedMonth" variant="card">
+        <option :value="null">Todos los meses</option>
+        <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
+      </BaseSelect>
+      <BaseSelect v-if="selectedMonth !== null" v-model="selectedDay" variant="card">
+        <option :value="null">Todos los días</option>
+        <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
+      </BaseSelect>
+      <BaseSelect v-model="selectedYear" variant="card">
+        <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
+      </BaseSelect>
+      <div class="flex flex-col gap-3 sm:ml-auto sm:flex-row">
+        <SearchField v-model="filters.search" class="sm:w-72" placeholder="Buscar por orden, referencia, metodo o categoria" />
+        <BaseSelect v-model="filters.origen" variant="card" class="sm:w-48">
+          <option value="">Todos los origenes</option>
+          <option value="orden">De ordenes</option>
+          <option v-for="cat in categoriasIngreso" :key="cat.value" :value="cat.value">{{ cat.label }}</option>
+        </BaseSelect>
+      </div>
+    </FilterBar>
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <StatCard label="Total ingresos" :value="formatCurrency(summary.total)" icon="trend-up" tone="green" hint="Segun los filtros aplicados" />
@@ -61,18 +70,6 @@
     </div>
 
     <BaseCard title="Historial de ingresos" subtitle="Pagos de ordenes y ventas sin factura, con trazabilidad" content-class="p-4">
-      <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_190px]">
-        <label class="relative block">
-          <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-          <input v-model="filters.search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar por orden, referencia, metodo o categoria" />
-        </label>
-        <BaseInput v-model="filters.origen" type="select">
-          <option value="">Todos los origenes</option>
-          <option value="orden">De ordenes</option>
-          <option v-for="cat in categoriasIngreso" :key="cat.value" :value="cat.value">{{ cat.label }}</option>
-        </BaseInput>
-      </div>
-
       <BaseTable :columns="columns" :rows="filteredRows" :loading="loading">
         <template #origen="{ row }">
           <RouterLink v-if="row.source === 'pago'" :to="{ name: 'orden-detalle', params: { id: row.raw.orden_id } }" class="font-mono text-brand-600 hover:underline dark:text-brand-400">
@@ -173,16 +170,18 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AppIcon from '../components/AppIcon.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
 import BaseInput from '../components/BaseInput.vue'
 import BaseModal from '../components/BaseModal.vue'
+import BaseSelect from '../components/BaseSelect.vue'
 import BaseTable from '../components/BaseTable.vue'
 import ComboSelect from '../components/ComboSelect.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FabButton from '../components/FabButton.vue'
+import FilterBar from '../components/FilterBar.vue'
 import PageHeader from '../components/PageHeader.vue'
+import SearchField from '../components/SearchField.vue'
 import StatCard from '../components/StatCard.vue'
 import { ordenesApi, pagosApi, inventarioApi } from '../api/resources'
 import { movimientosCajaApi } from '../api/movimientosCajaApi'
@@ -190,6 +189,7 @@ import { categoriasApi } from '../api/categoriasApi'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 import { useUiStore } from '../stores/ui'
+import { normalizarTexto } from '../utils/texto'
 
 const { formatCurrency, formatDate, formatNumber, parseUTC } = useFormatters()
 const { loading, run } = useApiState()
@@ -335,13 +335,13 @@ const unifiedRows = computed(() => {
 })
 
 const filteredRows = computed(() => {
-  const term = filters.search.toLowerCase().trim()
+  const term = normalizarTexto(filters.search)
   return unifiedRows.value.filter((row) => {
     const matchesSearch = !term || (
-      row.origenLabel.toLowerCase().includes(term)
-      || row.origenSub.toLowerCase().includes(term)
-      || row.detalle.toLowerCase().includes(term)
-      || row.metodo_pago.toLowerCase().includes(term)
+      normalizarTexto(row.origenLabel).includes(term)
+      || normalizarTexto(row.origenSub).includes(term)
+      || normalizarTexto(row.detalle).includes(term)
+      || normalizarTexto(row.metodo_pago).includes(term)
     )
     const matchesOrigen = !filters.origen || row.categoria === filters.origen
 

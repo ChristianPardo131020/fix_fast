@@ -17,7 +17,8 @@ class OrdenPublicaResponse(BaseModel):
     marca: Optional[str] = None
     modelo: Optional[str] = None
     estado: Optional[str] = None
-    fecha_ingreso: datetime
+    fecha_ingreso: Optional[datetime] = None
+    created_at: Optional[datetime] = None
     fecha_entrega: Optional[datetime] = None
     valor: Optional[Decimal] = 0
     saldo: Optional[Decimal] = 0

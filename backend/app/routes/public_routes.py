@@ -80,6 +80,7 @@ def consultar_orden(
         modelo=orden.modelo,
         estado=orden.estado,
         fecha_ingreso=orden.fecha_ingreso,
+        created_at=orden.created_at,
         fecha_entrega=orden.fecha_entrega,
         valor=orden.valor,
         saldo=orden.saldo,

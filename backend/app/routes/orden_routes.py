@@ -145,7 +145,11 @@ def actualizar_orden(
 
     estado_anterior = orden.estado
 
-    for key, value in datos.dict().items():
+    update_dict = datos.dict()
+    update_dict.pop("numero_orden", None)
+    update_dict.pop("created_at", None)
+
+    for key, value in update_dict.items():
         setattr(orden, key, value)
 
     # Registra el cambio en historial_estados solo cuando el estado
@@ -184,6 +188,16 @@ def eliminar_orden(
             status_code=404,
             detail="Orden no encontrada"
         )
+
+    # Revertir stock de repuestos usados si los hay y limpiar UsedPart y MovimientoInventario
+    used_parts = db.query(UsedPart).filter(UsedPart.orden_id == orden_id).all()
+    for up in used_parts:
+        producto = db.query(Producto).filter(Producto.id == up.producto_id).first()
+        if producto:
+            producto.stock_actual += up.cantidad
+
+    db.query(MovimientoInventario).filter(MovimientoInventario.orden_id == orden_id).delete()
+    db.query(UsedPart).filter(UsedPart.orden_id == orden_id).delete()
 
     # pagos e historial_estados apuntan a esta orden por foreign key sin
     # CASCADE -- borrar la orden directamente violaba esa FK y tiraba un

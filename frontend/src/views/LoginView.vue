@@ -1,7 +1,13 @@
 <template>
   <main class="grid min-h-screen bg-slate-950 text-white lg:grid-cols-[1.05fr_0.95fr]">
-    <section class="hidden flex-col justify-between bg-slate-950 p-10 lg:flex">
-      <div class="flex items-center gap-3">
+    <section class="relative hidden flex-col justify-between overflow-hidden bg-slate-950 p-10 lg:flex">
+      <div aria-hidden="true" class="pointer-events-none absolute inset-0">
+        <div class="absolute -top-24 -right-16 h-96 w-96 rounded-full bg-brand-600/25 blur-3xl animate-blob" />
+        <div class="absolute top-1/2 -left-24 h-80 w-80 rounded-full bg-purple-600/20 blur-3xl animate-blob [animation-delay:2.5s]" />
+        <div class="absolute -bottom-24 right-1/4 h-72 w-72 rounded-full bg-teal-500/15 blur-3xl animate-blob [animation-delay:5s]" />
+      </div>
+
+      <div class="relative flex items-center gap-3">
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
           <img src="/logo-mark.png" alt="FixFast" class="h-full w-full object-contain" />
         </div>
@@ -11,13 +17,13 @@
         </div>
       </div>
 
-      <div class="max-w-xl">
-        <p class="mb-4 inline-flex rounded-full border border-white/10 px-3 py-1 text-sm text-brand-200">Operaciones, caja y reparaciones en un solo lugar</p>
-        <h1 class="text-5xl font-semibold leading-tight">Que bueno verte de nuevo.</h1>
+      <div class="relative max-w-xl">
+        <p class="mb-4 inline-flex rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-sm text-brand-200 backdrop-blur">Operaciones, caja y reparaciones en un solo lugar</p>
+        <h1 class="text-5xl font-semibold leading-tight"><span class="text-gradient">Que bueno verte de nuevo.</span></h1>
         <p class="mt-5 text-lg text-slate-300">Ingresa con tu cuenta de administrador para gestionar ordenes, clientes, pagos y caja del taller.</p>
       </div>
 
-      <div class="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+      <div class="relative rounded-xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur">
         <p class="text-sm font-medium text-white">¿Buscas el estado de una reparacion?</p>
         <p class="mt-1 text-sm text-slate-400">Este acceso es solo para el equipo del taller. Si sos cliente y queres saber en que va tu equipo, no necesitas cuenta.</p>
         <RouterLink :to="{ name: 'seguimiento' }" class="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-300 hover:text-brand-200">
@@ -102,6 +108,12 @@ const form = reactive({ email: '', password: '' })
 
 async function submit() {
   error.value = ''
+
+  if (auth.isDevMode) {
+    await auth.init()
+    router.push(route.query.redirect || { name: 'dashboard' })
+    return
+  }
 
   try {
     await auth.login(form)

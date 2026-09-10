@@ -139,15 +139,19 @@ def _variacion(actual: Decimal, anterior: Decimal) -> tuple[Decimal | None, str]
     return _pct(variacion), tendencia
 
 
-def _metric(actual, anterior) -> dict:
+def _metric(actual, anterior, desglose: list[dict] | None = None) -> dict:
     actual_dec = _money(actual)
     variacion, tendencia = _variacion(Decimal(actual or 0), Decimal(anterior or 0))
-    return {"valor": actual_dec, "variacion_pct": variacion, "tendencia": tendencia}
+    return {"valor": actual_dec, "variacion_pct": variacion, "tendencia": tendencia, "desglose": desglose or []}
 
 
-def _metric_int(actual: int, anterior: int) -> dict:
+def _metric_int(actual: int, anterior: int, desglose: list[dict] | None = None) -> dict:
     variacion, tendencia = _variacion(Decimal(actual), Decimal(anterior))
-    return {"valor": actual, "variacion_pct": variacion, "tendencia": tendencia}
+    return {"valor": actual, "variacion_pct": variacion, "tendencia": tendencia, "desglose": desglose or []}
+
+
+def _item(label: str, valor, formato: str = "moneda") -> dict:
+    return {"label": label, "valor": valor, "formato": formato}
 
 
 # --------------------------------------------------------------------------
@@ -177,7 +181,9 @@ def _estado_counts(db: Session, inicio: datetime, fin: datetime) -> dict[str, in
     return counts
 
 
-def _ingresos_egresos(db: Session, inicio: datetime, fin: datetime) -> tuple[Decimal, Decimal]:
+def _mov_componentes(db: Session, inicio: datetime, fin: datetime) -> tuple[Decimal, Decimal, Decimal]:
+    """Los tres componentes de plata del periodo, sin sumar todavia:
+    pagos de ordenes, otros ingresos de caja (mostrador) y egresos."""
     pagos = db.query(func.coalesce(func.sum(Pago.valor), 0)).filter(
         Pago.created_at >= inicio, Pago.created_at < fin
     ).scalar()
@@ -190,7 +196,23 @@ def _ingresos_egresos(db: Session, inicio: datetime, fin: datetime) -> tuple[Dec
         MovimientoCaja.tipo == "egreso", MovimientoCaja.created_at >= inicio, MovimientoCaja.created_at < fin
     ).scalar()
 
-    return Decimal(pagos) + Decimal(otros_ingresos), Decimal(egresos)
+    return Decimal(pagos), Decimal(otros_ingresos), Decimal(egresos)
+
+
+def _ingresos_egresos(db: Session, inicio: datetime, fin: datetime) -> tuple[Decimal, Decimal]:
+    pagos, otros_ingresos, egresos = _mov_componentes(db, inicio, fin)
+    return pagos + otros_ingresos, egresos
+
+
+def _egresos_por_categoria(db: Session, inicio: datetime, fin: datetime) -> list[dict]:
+    filas = (
+        db.query(MovimientoCaja.categoria, func.coalesce(func.sum(MovimientoCaja.valor), 0))
+        .filter(MovimientoCaja.tipo == "egreso", MovimientoCaja.created_at >= inicio, MovimientoCaja.created_at < fin)
+        .group_by(MovimientoCaja.categoria)
+        .order_by(func.coalesce(func.sum(MovimientoCaja.valor), 0).desc())
+        .all()
+    )
+    return [_item(cat or "Sin categoria", _money(monto)) for cat, monto in filas]
 
 
 def _saldo_pendiente(db: Session, inicio: datetime, fin: datetime) -> Decimal:
@@ -200,8 +222,23 @@ def _saldo_pendiente(db: Session, inicio: datetime, fin: datetime) -> Decimal:
     return Decimal(total)
 
 
+def _saldo_pendiente_detalle(db: Session, inicio: datetime, fin: datetime) -> list[dict]:
+    cantidad, total = (
+        db.query(func.count(Orden.id), func.coalesce(func.sum(Orden.saldo), 0))
+        .filter(Orden.fecha_ingreso >= inicio, Orden.fecha_ingreso < fin, Orden.saldo > 0)
+        .first()
+    )
+    promedio = (Decimal(total) / cantidad) if cantidad else Decimal(0)
+    return [
+        _item("Ordenes con saldo", cantidad, "entero"),
+        _item("Total por cobrar", _money(total)),
+        _item("Saldo promedio", _money(promedio)),
+    ]
+
+
 def _kpis(db: Session, periodo: Periodo) -> dict:
-    ingresos, egresos = _ingresos_egresos(db, periodo.inicio, periodo.fin)
+    pagos_ordenes, otros_ingresos, egresos = _mov_componentes(db, periodo.inicio, periodo.fin)
+    ingresos = pagos_ordenes + otros_ingresos
     ingresos_ant, egresos_ant = _ingresos_egresos(db, periodo.inicio_anterior, periodo.fin_anterior)
 
     utilidad = ingresos - egresos
@@ -221,16 +258,34 @@ def _kpis(db: Session, periodo: Periodo) -> dict:
     estados = _estado_counts(db, periodo.inicio, periodo.fin)
     estados_ant = _estado_counts(db, periodo.inicio_anterior, periodo.fin_anterior)
 
+    ingresos_desglose = [
+        _item("Pagos de ordenes", _money(pagos_ordenes)),
+        _item("Otros ingresos (mostrador)", _money(otros_ingresos)),
+        _item("Total ingresos", _money(ingresos)),
+    ]
+    utilidad_desglose = [
+        _item("Ingresos", _money(ingresos)),
+        _item("Egresos", _money(-egresos)),
+        _item("Utilidad", _money(utilidad)),
+        _item("Margen", _pct(margen), "porcentaje"),
+    ]
+    # Mismo desglose para "en reparacion" y "listos": el reparto completo
+    # de ordenes del periodo por estado, para ver el contexto de cada uno.
+    estados_desglose = [_item(e.label, estados[e.key], "entero") for e in ESTADOS]
+
     return {
-        "ingresos": _metric(ingresos, ingresos_ant),
-        "utilidad": _metric(utilidad, utilidad_ant),
+        "ingresos": _metric(ingresos, ingresos_ant, ingresos_desglose),
+        "utilidad": _metric(utilidad, utilidad_ant, utilidad_desglose),
         "margen_pct": {"valor": _pct(margen), "variacion_pct": margen_variacion, "tendencia": margen_tendencia},
-        "saldo_pendiente": _metric(saldo_pendiente, saldo_pendiente_ant),
+        "saldo_pendiente": _metric(
+            saldo_pendiente, saldo_pendiente_ant,
+            _saldo_pendiente_detalle(db, periodo.inicio, periodo.fin),
+        ),
         # "reparacion" ya no es un estado propio (vocabulario reducido a
         # pendiente/listo/entregado/cancelado, ver app/core/estados.py) —
         # equipos "en reparacion" ahora es lo mismo que "pendiente".
-        "equipos_reparacion": _metric_int(estados["pendiente"], estados_ant["pendiente"]),
-        "equipos_listos": _metric_int(estados["listo"], estados_ant["listo"]),
+        "equipos_reparacion": _metric_int(estados["pendiente"], estados_ant["pendiente"], estados_desglose),
+        "equipos_listos": _metric_int(estados["listo"], estados_ant["listo"], estados_desglose),
     }, estados
 
 
@@ -446,7 +501,10 @@ def _performance(db: Session, periodo: Periodo) -> dict:
             "variacion_pct": _pct(conversion_actual - conversion_anterior),
             "tendencia": "up" if conversion_actual > conversion_anterior else "down" if conversion_actual < conversion_anterior else "flat",
         },
-        "gastos_periodo": _metric(egresos_actual, egresos_anterior),
+        "gastos_periodo": _metric(
+            egresos_actual, egresos_anterior,
+            _egresos_por_categoria(db, periodo.inicio, periodo.fin),
+        ),
         "saldo_disponible": _metric(saldo_disponible_ahora, saldo_disponible_inicio_periodo),
     }
 

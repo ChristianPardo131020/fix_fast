@@ -131,6 +131,22 @@ textarea {
   background: #374151;
 }
 
+/* Scrollbar del sidebar: vive sobre el azul tinta oscuro, en los dos
+   temas, asi que usa siempre un pulgar claro y translucido. */
+.scrollbar-dark::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+}
+
+.scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.55);
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.18s ease;
@@ -156,4 +172,147 @@ textarea {
 
 .page-leave-to {
   opacity: 0;
+}
+
+/* ============================================================
+ * Rediseño visual — micro-interacciones, animaciones y ambientes.
+ * Todo acá es puramente presentación: no cambia ningún flujo de
+ * datos ni endpoint. Respeta prefers-reduced-motion.
+ * ============================================================ */
+
+/* Selección de texto con el acento de marca */
+::selection {
+  background: rgba(59, 102, 245, 0.18);
+}
+
+/* Texto con degradado de marca (títulos hero) */
+.text-gradient {
+  background: linear-gradient(110deg, #3b66f5 0%, #7c3aed 48%, #2563eb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---- Orbes de fondo (ambiente) ---- */
+@keyframes blob-float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(24px, -28px) scale(1.06);
+  }
+  66% {
+    transform: translate(-20px, 18px) scale(0.97);
+  }
+}
+
+.animate-blob {
+  animation: blob-float 14s ease-in-out infinite;
+}
+
+/* ---- Esqueleto con brillo (reemplaza el pulse plano) ---- */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background-image: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 40%, #e2e8f0 80%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.dark .skeleton {
+  background-image: linear-gradient(90deg, #1e293b 0%, #28354a 40%, #1e293b 80%);
+}
+
+/* ---- Entradas ---- */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ---- Transiciones de modal / toast ---- */
+.modal-enter-active {
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.modal-enter-from {
+  opacity: 0;
+  transform: translateY(14px) scale(0.97);
+}
+
+.modal-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+}
+
+.toast-enter-active {
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast-enter-from {
+  opacity: 0;
+  transform: translateX(24px);
+}
+
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(24px) scale(0.98);
+}
+
+.toast-move {
+  transition: transform 0.3s ease;
+}
+
+/* ---- Accesibilidad: movimiento reducido ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
 }

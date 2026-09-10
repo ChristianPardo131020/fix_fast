@@ -31,6 +31,7 @@ class EstadoDef:
 ESTADOS: tuple[EstadoDef, ...] = (
     EstadoDef("pendiente", "Pendiente", "#64748b"),
     EstadoDef("listo", "Listo", "#22c55e"),
+    EstadoDef("entregado_sr", "Entregado (sin recibo)", "#f97316"),
     EstadoDef("entregado", "Entregado", "#a855f7"),
     EstadoDef("cancelado", "Cancelado", "#ef4444"),
 )
@@ -45,6 +46,7 @@ ESTADOS_POR_KEY = {estado.key: estado for estado in ESTADOS}
 _ALIASES: dict[str, tuple[str, ...]] = {
     "pendiente": ("pendiente", "recibido", "diagnostico", "repuesto", "reparacion", "proceso"),
     "listo": ("listo", "reparad"),
+    "entregado_sr": ("sin recibo",),
     "entregado": ("entreg",),
     "cancelado": ("cancel",),
 }

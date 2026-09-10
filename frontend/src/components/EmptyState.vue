@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 px-6 py-10 text-center dark:border-slate-800">
-    <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
-      <AppIcon :name="icon" />
+    <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500 shadow-inner ring-1 ring-slate-200/60 dark:from-slate-800 dark:to-slate-800/50 dark:text-slate-300 dark:ring-slate-700/60">
+      <AppIcon :name="icon" class="h-6 w-6" />
     </div>
     <h3 class="text-sm font-semibold text-slate-900 dark:text-white">{{ title }}</h3>
     <p class="mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">{{ description }}</p>

@@ -3,10 +3,10 @@
     <!-- Mobile: lista de tarjetas -->
     <div class="space-y-3 sm:hidden">
       <div v-if="loading" class="space-y-3">
-        <div v-for="n in 3" :key="n" class="animate-pulse rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div v-for="n in 3" :key="n" class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
           <div v-for="c in columns.length" :key="c" class="mb-2.5 flex items-center justify-between gap-3 last:mb-0">
-            <span class="h-3 w-16 rounded bg-slate-200 dark:bg-slate-800" />
-            <span class="h-3 w-24 rounded bg-slate-200 dark:bg-slate-800" />
+            <span class="skeleton h-3 w-16 rounded" />
+            <span class="skeleton h-3 w-24 rounded" />
           </div>
         </div>
       </div>
@@ -47,12 +47,12 @@
           </thead>
           <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
             <template v-if="loading">
-              <tr v-for="n in 5" :key="`skeleton-${n}`" class="animate-pulse">
+              <tr v-for="n in 5" :key="`skeleton-${n}`">
                 <td v-for="column in columns" :key="column.key" class="px-4 py-3.5">
-                  <span class="block h-3 w-full max-w-[10rem] rounded bg-slate-200 dark:bg-slate-800" />
+                  <span class="skeleton block h-3 w-full max-w-[10rem] rounded" />
                 </td>
                 <td v-if="$slots.actions" class="px-4 py-3.5 text-right">
-                  <span class="ml-auto block h-3 w-16 rounded bg-slate-200 dark:bg-slate-800" />
+                  <span class="skeleton ml-auto block h-3 w-16 rounded" />
                 </td>
               </tr>
             </template>

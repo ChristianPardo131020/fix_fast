@@ -4,11 +4,19 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 
 
+class DesgloseItem(BaseModel):
+    """Fila del resumen que se muestra al pasar el mouse sobre un KPI."""
+    label: str
+    valor: Decimal
+    formato: Literal["moneda", "entero", "porcentaje"] = "moneda"
+
+
 class Metric(BaseModel):
     """Un valor monetario/decimal con su variacion vs el periodo anterior."""
     valor: Decimal
     variacion_pct: Optional[Decimal] = None
     tendencia: Literal["up", "down", "flat"] = "flat"
+    desglose: list[DesgloseItem] = []
 
 
 class MetricInt(BaseModel):
@@ -16,6 +24,7 @@ class MetricInt(BaseModel):
     valor: int
     variacion_pct: Optional[Decimal] = None
     tendencia: Literal["up", "down", "flat"] = "flat"
+    desglose: list[DesgloseItem] = []
 
 
 class PeriodoInfo(BaseModel):

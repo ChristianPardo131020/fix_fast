@@ -35,6 +35,7 @@ import {
   Search,
   Settings,
   Shield,
+  SlidersHorizontal,
   Stethoscope,
   Sun,
   Timer,
@@ -97,6 +98,7 @@ const icons = {
   stethoscope: Stethoscope,
   x: X,
   'chevron-down': ChevronDown,
+  filter: SlidersHorizontal,
 }
 
 const icon = computed(() => icons[props.name] || Clock)

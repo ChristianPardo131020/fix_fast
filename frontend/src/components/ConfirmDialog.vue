@@ -2,6 +2,7 @@
   <Teleport to="body">
     <Transition name="fade">
       <div v-if="ui.confirmState" class="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:items-center" @click.self="ui.resolveConfirm(false)">
+        <Transition name="modal" appear>
         <div class="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
           <div class="flex items-start gap-3">
             <div :class="toneClasses" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
@@ -17,6 +18,7 @@
             <BaseButton :variant="ui.confirmState.tone === 'danger' ? 'danger' : 'primary'" @click="ui.resolveConfirm(true)">{{ ui.confirmState.confirmLabel }}</BaseButton>
           </div>
         </div>
+        </Transition>
       </div>
     </Transition>
   </Teleport>

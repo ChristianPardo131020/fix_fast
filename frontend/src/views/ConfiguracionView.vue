@@ -21,8 +21,8 @@
           <BaseButton type="submit" icon="plus" :loading="savingIngreso">Agregar</BaseButton>
         </form>
 
-        <div v-if="loading" class="space-y-2 animate-pulse">
-          <div v-for="n in 3" :key="n" class="h-10 rounded-lg bg-slate-100 dark:bg-slate-800" />
+        <div v-if="loading" class="space-y-2">
+          <div v-for="n in 3" :key="n" class="skeleton h-10 rounded-lg" />
         </div>
 
         <div v-else-if="ingresos.length" class="divide-y divide-slate-100 dark:divide-slate-800/60 max-h-80 overflow-y-auto pr-1">
@@ -59,8 +59,8 @@
           <BaseButton type="submit" icon="plus" :loading="savingEgreso">Agregar</BaseButton>
         </form>
 
-        <div v-if="loading" class="space-y-2 animate-pulse">
-          <div v-for="n in 3" :key="n" class="h-10 rounded-lg bg-slate-100 dark:bg-slate-800" />
+        <div v-if="loading" class="space-y-2">
+          <div v-for="n in 3" :key="n" class="skeleton h-10 rounded-lg" />
         </div>
 
         <div v-else-if="egresos.length" class="divide-y divide-slate-100 dark:divide-slate-800/60 max-h-80 overflow-y-auto pr-1">
@@ -97,8 +97,8 @@
           <BaseButton type="submit" icon="plus" :loading="savingCategoriaInventario">Agregar</BaseButton>
         </form>
 
-        <div v-if="loading" class="space-y-2 animate-pulse">
-          <div v-for="n in 3" :key="n" class="h-10 rounded-lg bg-slate-100 dark:bg-slate-800" />
+        <div v-if="loading" class="space-y-2">
+          <div v-for="n in 3" :key="n" class="skeleton h-10 rounded-lg" />
         </div>
 
         <div v-else-if="categoriasInventario.length" class="divide-y divide-slate-100 dark:divide-slate-800/60 max-h-80 overflow-y-auto pr-1">

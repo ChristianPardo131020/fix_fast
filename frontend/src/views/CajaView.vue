@@ -8,22 +8,30 @@
       Controla arriendos, empleados, servicios, compras, herramientas, transportes y otros gastos del taller. Los pagos
       de ordenes y otras ventas se registran desde <RouterLink :to="{ name: 'pagos' }" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Ingresos</RouterLink>.
       <template #actions>
-        <div class="flex items-center gap-2">
-           <select v-model="selectedMonth" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-             <option :value="null">Todos los meses</option>
-             <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
-           </select>
-           <select v-if="selectedMonth !== null" v-model="selectedDay" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-             <option :value="null">Todos los días</option>
-             <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
-           </select>
-           <select v-model="selectedYear" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-             <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
-           </select>
-           <BaseButton icon="plus" @click="modalOpen = true">Nuevo egreso</BaseButton>
-        </div>
+        <BaseButton icon="plus" @click="modalOpen = true">Nuevo egreso</BaseButton>
       </template>
     </PageHeader>
+
+    <FilterBar>
+      <BaseSelect v-model="selectedMonth" variant="card">
+        <option :value="null">Todos los meses</option>
+        <option v-for="(mes, index) in meses" :key="mes" :value="index + 1">{{ mes }}</option>
+      </BaseSelect>
+      <BaseSelect v-if="selectedMonth !== null" v-model="selectedDay" variant="card">
+        <option :value="null">Todos los días</option>
+        <option v-for="d in daysInSelectedMonth" :key="d" :value="d">{{ d }}</option>
+      </BaseSelect>
+      <BaseSelect v-model="selectedYear" variant="card">
+        <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
+      </BaseSelect>
+      <div class="flex flex-col gap-3 sm:ml-auto sm:flex-row">
+        <SearchField v-model="filters.search" class="sm:w-72" placeholder="Buscar descripción, método o categoría" />
+        <BaseSelect v-model="filters.categoria" variant="card" class="sm:w-48">
+          <option value="">Todas las categorías</option>
+          <option v-for="cat in categoriasList" :key="cat" :value="cat">{{ cat }}</option>
+        </BaseSelect>
+      </div>
+    </FilterBar>
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <StatCard label="Total egresos" :value="formatCurrency(summary.egresos)" icon="cash" tone="rose" hint="Gastos y salidas filtradas" />
@@ -71,17 +79,6 @@
     </div>
 
     <BaseCard title="Egresos de caja" subtitle="Gastos operativos y trazabilidad financiera" content-class="p-4">
-      <div class="mb-4 grid gap-3 lg:grid-cols-[1fr_190px]">
-        <label class="relative block">
-          <AppIcon name="search" class="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-          <input v-model="filters.search" class="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950" placeholder="Buscar descripción, método o categoría" />
-        </label>
-        <BaseInput v-model="filters.categoria" type="select">
-          <option value="">Todas las categorías</option>
-          <option v-for="cat in categoriasList" :key="cat" :value="cat">{{ cat }}</option>
-        </BaseInput>
-      </div>
-
       <FinanceMovementsTable :rows="filteredMovimientos" :loading="loading" @delete="removeMovimiento" />
     </BaseCard>
 
@@ -92,20 +89,22 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AppIcon from '../components/AppIcon.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
-import BaseInput from '../components/BaseInput.vue'
+import BaseSelect from '../components/BaseSelect.vue'
 import EmptyState from '../components/EmptyState.vue'
+import FilterBar from '../components/FilterBar.vue'
 import FinanceMovementsTable from '../components/FinanceMovementsTable.vue'
 import MovimientoCajaModal from '../components/MovimientoCajaModal.vue'
 import PageHeader from '../components/PageHeader.vue'
+import SearchField from '../components/SearchField.vue'
 import StatCard from '../components/StatCard.vue'
 import { movimientosCajaApi } from '../api/movimientosCajaApi'
 import { categoriasApi } from '../api/categoriasApi'
 import { useApiState } from '../composables/useApiState'
 import { useFormatters } from '../composables/useFormatters'
 import { useUiStore } from '../stores/ui'
+import { normalizarTexto } from '../utils/texto'
 
 const { formatCurrency, formatNumber, parseUTC } = useFormatters()
 const { loading, run } = useApiState()
@@ -150,13 +149,13 @@ const daysInSelectedMonth = computed(() => {
 })
 
 const filteredMovimientos = computed(() => {
-  const term = filters.search.toLowerCase().trim()
+  const term = normalizarTexto(filters.search)
 
   return movimientos.value.filter((movimiento) => {
     const matchesSearch = !term || (
-      movimiento.descripcion?.toLowerCase().includes(term)
-      || movimiento.metodo_pago?.toLowerCase().includes(term)
-      || movimiento.categoria?.toLowerCase().includes(term)
+      normalizarTexto(movimiento.descripcion).includes(term)
+      || normalizarTexto(movimiento.metodo_pago).includes(term)
+      || normalizarTexto(movimiento.categoria).includes(term)
     )
     const matchesTipo = movimiento.tipo === 'egreso'
     const matchesCategoria = !filters.categoria || movimiento.categoria === filters.categoria

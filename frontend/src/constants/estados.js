@@ -16,6 +16,7 @@
 export const ESTADOS = [
   { key: 'pendiente', label: 'Pendiente', color: '#64748b', icon: 'clock' },
   { key: 'listo', label: 'Listo', color: '#22c55e', icon: 'check' },
+  { key: 'entregado_sr', label: 'Entregado (sin recibo)', color: '#f97316', icon: 'check' },
   { key: 'entregado', label: 'Entregado', color: '#a855f7', icon: 'check' },
   { key: 'cancelado', label: 'Cancelado', color: '#ef4444', icon: 'trash' },
 ]
@@ -27,6 +28,7 @@ export const ESTADOS_LABELS = ESTADOS.map((estado) => estado.label)
 const ALIASES = {
   pendiente: ['pendiente', 'recibido', 'diagnostico', 'repuesto', 'reparacion', 'proceso'],
   listo: ['listo', 'reparad'],
+  entregado_sr: ['sin recibo'],
   entregado: ['entreg'],
   cancelado: ['cancel'],
 }

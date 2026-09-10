@@ -58,6 +58,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { normalizarTexto } from '../utils/texto'
 
 // Combobox con filtro en el propio navegador para listas grandes
 // (clientes, ordenes: miles de filas). Un <select> nativo con miles de
@@ -85,12 +86,12 @@ const selectedOption = computed(() =>
 )
 
 const filteredOptions = computed(() => {
-  const term = query.value.toLowerCase().trim()
+  const term = normalizarTexto(query.value)
   if (!term) return props.options.slice(0, MAX_RESULTS)
 
   const matches = []
   for (const opt of props.options) {
-    if (opt.label?.toLowerCase().includes(term) || opt.sublabel?.toLowerCase().includes(term)) {
+    if (normalizarTexto(opt.label).includes(term) || normalizarTexto(opt.sublabel).includes(term)) {
       matches.push(opt)
       if (matches.length >= MAX_RESULTS) break
     }

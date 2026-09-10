@@ -10,15 +10,17 @@
       class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
       @input="$emit('update:modelValue', $event.target.value)"
     />
-    <select
-      v-else-if="type === 'select'"
-      :value="modelValue"
-      :required="required"
-      class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-      @change="$emit('update:modelValue', $event.target.value)"
-    >
-      <slot />
-    </select>
+    <div v-else-if="type === 'select'" class="relative">
+      <select
+        :value="modelValue"
+        :required="required"
+        class="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 py-2 pr-9 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+        @change="$emit('update:modelValue', $event.target.value)"
+      >
+        <slot />
+      </select>
+      <AppIcon name="chevron-down" class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    </div>
     <input
       v-else
       :type="type"
@@ -34,6 +36,8 @@
 </template>
 
 <script setup>
+import AppIcon from './AppIcon.vue'
+
 defineProps({
   modelValue: { type: [String, Number], default: '' },
   label: { type: String, default: '' },
