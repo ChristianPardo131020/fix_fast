@@ -20,6 +20,8 @@ from app.schemas.proveedor_schema import ProveedorCreate, ProveedorResponse
 from app.schemas.movimiento_inventario_schema import MovimientoInventarioCreate, MovimientoInventarioResponse
 
 
+from datetime import datetime
+
 # --- Schemas para operaciones integradas ---
 
 class CompraInventarioCreate(BaseModel):
@@ -29,6 +31,7 @@ class CompraInventarioCreate(BaseModel):
     valor_unitario: float
     metodo_pago: str = "Efectivo"
     descripcion: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 class VentaMostradorCreate(BaseModel):
     """Venta de mostrador: salida en Kardex + ingreso en caja."""
@@ -37,6 +40,7 @@ class VentaMostradorCreate(BaseModel):
     precio_venta: float
     metodo_pago: str = "Efectivo"
     descripcion: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 router = APIRouter(
     prefix="/inventario",
@@ -163,7 +167,10 @@ def registrar_movimiento(movimiento: MovimientoInventarioCreate, db: Session = D
     elif movimiento.tipo == 'ajuste':
         producto.stock_actual += movimiento.cantidad
 
-    nuevo_movimiento = MovimientoInventario(**movimiento.dict())
+    datos = movimiento.dict()
+    if datos.get("created_at") is None:
+        datos.pop("created_at", None)
+    nuevo_movimiento = MovimientoInventario(**datos)
     db.add(nuevo_movimiento)
     db.commit()
     db.refresh(nuevo_movimiento)
@@ -205,23 +212,29 @@ def registrar_compra(compra: CompraInventarioCreate, db: Session = Depends(get_d
     producto.stock_actual += compra.cantidad
 
     # 2. Kardex — entrada
-    mov_inventario = MovimientoInventario(
-        producto_id=compra.producto_id,
-        tipo="entrada",
-        cantidad=compra.cantidad,
-        valor_unitario=compra.valor_unitario,
-        motivo=compra.descripcion or f"Compra de {producto.nombre}",
-    )
+    datos_inv = {
+        "producto_id": compra.producto_id,
+        "tipo": "entrada",
+        "cantidad": compra.cantidad,
+        "valor_unitario": compra.valor_unitario,
+        "motivo": compra.descripcion or f"Compra de {producto.nombre}",
+    }
+    if compra.created_at is not None:
+        datos_inv["created_at"] = compra.created_at
+    mov_inventario = MovimientoInventario(**datos_inv)
     db.add(mov_inventario)
 
     # 3. Caja — egreso
-    mov_caja = MovimientoCaja(
-        tipo="egreso",
-        categoria="compra_inventario",
-        valor=total,
-        metodo_pago=compra.metodo_pago,
-        descripcion=f"Compra: {producto.nombre} x{compra.cantidad} @ ${compra.valor_unitario:.0f}",
-    )
+    datos_caja = {
+        "tipo": "egreso",
+        "categoria": "compra_inventario",
+        "valor": total,
+        "metodo_pago": compra.metodo_pago,
+        "descripcion": f"Compra: {producto.nombre} x{compra.cantidad} @ ${compra.valor_unitario:.0f}",
+    }
+    if compra.created_at is not None:
+        datos_caja["created_at"] = compra.created_at
+    mov_caja = MovimientoCaja(**datos_caja)
     db.add(mov_caja)
 
     db.commit()
@@ -257,23 +270,29 @@ def registrar_venta(venta: VentaMostradorCreate, db: Session = Depends(get_db)):
     producto.stock_actual -= venta.cantidad
 
     # 2. Kardex — salida
-    mov_inventario = MovimientoInventario(
-        producto_id=venta.producto_id,
-        tipo="salida",
-        cantidad=venta.cantidad,
-        valor_unitario=venta.precio_venta,
-        motivo=venta.descripcion or f"Venta mostrador: {producto.nombre}",
-    )
+    datos_inv = {
+        "producto_id": venta.producto_id,
+        "tipo": "salida",
+        "cantidad": venta.cantidad,
+        "valor_unitario": venta.precio_venta,
+        "motivo": venta.descripcion or f"Venta mostrador: {producto.nombre}",
+    }
+    if venta.created_at is not None:
+        datos_inv["created_at"] = venta.created_at
+    mov_inventario = MovimientoInventario(**datos_inv)
     db.add(mov_inventario)
 
     # 3. Caja — ingreso
-    mov_caja = MovimientoCaja(
-        tipo="ingreso",
-        categoria="venta_producto",
-        valor=total,
-        metodo_pago=venta.metodo_pago,
-        descripcion=f"Venta: {producto.nombre} x{venta.cantidad} @ ${venta.precio_venta:.0f}",
-    )
+    datos_caja = {
+        "tipo": "ingreso",
+        "categoria": "venta_producto",
+        "valor": total,
+        "metodo_pago": venta.metodo_pago,
+        "descripcion": f"Venta: {producto.nombre} x{venta.cantidad} @ ${venta.precio_venta:.0f}",
+    }
+    if venta.created_at is not None:
+        datos_caja["created_at"] = venta.created_at
+    mov_caja = MovimientoCaja(**datos_caja)
     db.add(mov_caja)
 
     db.commit()

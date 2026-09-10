@@ -9,6 +9,7 @@ class MovimientoInventarioBase(BaseModel):
     valor_unitario: float
     motivo: Optional[str] = None
     orden_id: Optional[int] = None
+    created_at: Optional[datetime] = None
 
 class MovimientoInventarioCreate(MovimientoInventarioBase):
     pass

@@ -102,14 +102,17 @@
             Total egreso: <strong class="text-slate-950 dark:text-white">{{ formatCurrency(compraTotal) }}</strong>
           </p>
         </div>
-        <BaseInput v-model="compraForm.metodo_pago" label="Método de pago" type="select">
-          <option value="Efectivo">Efectivo</option>
-          <option value="Transferencia">Transferencia</option>
-          <option value="Nequi">Nequi</option>
-          <option value="Daviplata">Daviplata</option>
-          <option value="Tarjeta">Tarjeta</option>
-          <option value="Otro">Otro</option>
-        </BaseInput>
+        <div class="grid grid-cols-2 gap-4">
+          <BaseInput v-model="compraForm.metodo_pago" label="Método de pago" type="select">
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia</option>
+            <option value="Nequi">Nequi</option>
+            <option value="Daviplata">Daviplata</option>
+            <option value="Tarjeta">Tarjeta</option>
+            <option value="Otro">Otro</option>
+          </BaseInput>
+          <BaseInput v-model="compraForm.fecha" label="Fecha y hora" type="datetime-local" required />
+        </div>
         <BaseInput v-model="compraForm.descripcion" label="Descripción" placeholder="Ej. Compra a proveedor X" textarea />
         <div class="flex justify-end gap-2">
           <BaseButton variant="secondary" @click="compraModalOpen = false">Cancelar</BaseButton>
@@ -180,9 +183,14 @@ const movimientoColumns = [
 ]
 
 // --- Compra ---
+function localNow() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 const compraModalOpen = ref(false)
 const savingCompra = ref(false)
-const compraForm = reactive({ producto_id: '', cantidad: 1, valor_unitario: 0, metodo_pago: 'Efectivo', descripcion: '' })
+const compraForm = reactive({ producto_id: '', cantidad: 1, valor_unitario: 0, metodo_pago: 'Efectivo', descripcion: '', fecha: localNow() })
 
 const compraTotal = computed(() => Number(compraForm.cantidad || 0) * Number(compraForm.valor_unitario || 0))
 
@@ -276,11 +284,13 @@ function openCompra() {
   compraForm.valor_unitario = 0
   compraForm.metodo_pago = 'Efectivo'
   compraForm.descripcion = ''
+  compraForm.fecha = localNow()
   compraModalOpen.value = true
 }
 
 async function saveCompra() {
   savingCompra.value = true
+  const fechaISO = compraForm.fecha ? new Date(compraForm.fecha).toISOString() : null
   try {
     await run(() => inventarioApi.registrarCompra({
       producto_id: Number(compraForm.producto_id),
@@ -288,6 +298,7 @@ async function saveCompra() {
       valor_unitario: Number(compraForm.valor_unitario),
       metodo_pago: compraForm.metodo_pago,
       descripcion: compraForm.descripcion,
+      created_at: fechaISO,
     }), 'Compra registrada — stock, Kardex y egreso actualizados')
     compraModalOpen.value = false
     await loadData()

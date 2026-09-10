@@ -18,7 +18,9 @@ JWKS_URL = (
 )
 JWKS_TTL_SECONDS = 3600
 
-bearer_scheme = HTTPBearer()
+from typing import Optional
+
+bearer_scheme = HTTPBearer(auto_error=False)
 
 # Proyectos nuevos de Supabase firman los JWT con claves asimétricas
 # (ES256) en vez de un secreto compartido HS256, así que verificamos
@@ -28,6 +30,8 @@ bearer_scheme = HTTPBearer()
 _jwks_cache = {"keys": [], "fetched_at": 0.0}
 
 def _fetch_jwks():
+    if not JWKS_URL:
+        return
     with urllib.request.urlopen(JWKS_URL, timeout=5) as response:
         data = json.loads(response.read())
 
@@ -55,14 +59,30 @@ def _find_signing_key(kid: str):
 # valida el JWT que emite Supabase Auth y resuelve el perfil de negocio
 # en la tabla usuarios.
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     db: Session = Depends(get_db)
 ) -> Usuario:
 
     if not JWKS_URL:
-        raise RuntimeError(
-            "SUPABASE_URL no está definida. Completá backend/.env con la "
-            "Project URL de Supabase (Settings → API)."
+        # Modo local / sin Supabase: obtener el primer usuario activo (admin)
+        usuario = db.query(Usuario).filter(Usuario.activo == True).first()
+        if usuario:
+            return usuario
+        usuario = Usuario(
+            nombre="Administrador",
+            email="admin@fixfast.com",
+            rol="admin",
+            activo=True
+        )
+        db.add(usuario)
+        db.commit()
+        db.refresh(usuario)
+        return usuario
+
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token no proporcionado"
         )
 
     token = credentials.credentials

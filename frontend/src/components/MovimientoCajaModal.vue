@@ -1,14 +1,11 @@
 <template>
   <BaseModal v-model="isOpen" :title="copy.title" :subtitle="copy.subtitle">
     <form class="grid gap-4" @submit.prevent="submit">
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid gap-4 sm:grid-cols-3">
         <BaseInput v-model="form.categoria" label="Categoria" type="select" required>
           <option v-for="categoria in categorias" :key="categoria" :value="categoria">{{ categoria }}</option>
         </BaseInput>
         <BaseInput v-model="form.valor" label="Valor" type="number" required />
-      </div>
-
-      <div class="grid gap-4 sm:grid-cols-2">
         <BaseInput v-model="form.metodo_pago" label="Metodo de pago" type="select" required>
           <option value="efectivo">Efectivo</option>
           <option value="transferencia">Transferencia</option>
@@ -18,6 +15,8 @@
           <option value="otro">Otro</option>
         </BaseInput>
       </div>
+
+      <BaseInput v-model="form.fecha" label="Fecha y hora" type="datetime-local" required />
 
       <BaseInput v-model="form.descripcion" :label="copy.descripcionLabel" :placeholder="copy.descripcionPlaceholder" textarea required />
 
@@ -90,11 +89,17 @@ const categorias = computed(() => {
 
 const copy = computed(() => copyPorTipo[props.tipo] || copyPorTipo.egreso)
 
+function localNow() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 const form = reactive({
   categoria: 'otros',
   valor: '',
   metodo_pago: 'efectivo',
   descripcion: '',
+  fecha: localNow(),
 })
 
 const isOpen = computed({
@@ -125,6 +130,7 @@ watch(
         valor: '',
         metodo_pago: 'efectivo',
         descripcion: '',
+        fecha: localNow(),
       })
       loadCategorias()
     }
@@ -138,12 +144,14 @@ onMounted(() => {
 })
 
 function submit() {
+  const fechaISO = form.fecha ? new Date(form.fecha).toISOString() : null
   emit('save', {
     tipo: props.tipo,
     categoria: form.categoria,
     valor: Number(form.valor || 0),
     metodo_pago: form.metodo_pago,
     descripcion: form.descripcion,
+    created_at: fechaISO,
   })
 }
 </script>

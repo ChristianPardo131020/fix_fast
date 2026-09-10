@@ -146,7 +146,7 @@
           <BaseInput v-model="form.cantidad" label="Cantidad" type="number" required />
         </template>
 
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4 sm:grid-cols-3">
           <BaseInput v-model="form.valor" label="Valor" type="number" required />
           <BaseInput v-model="form.metodo_pago" label="Metodo de pago" type="select">
             <option value="Efectivo">Efectivo</option>
@@ -156,6 +156,7 @@
             <option value="Tarjeta">Tarjeta</option>
             <option value="Otro">Otro</option>
           </BaseInput>
+          <BaseInput v-model="form.fecha" label="Fecha y hora" type="datetime-local" required />
         </div>
         <BaseInput v-if="origenTipo === 'orden'" v-model="form.referencia_pago" label="Referencia" placeholder="Numero de comprobante o nota" />
         <BaseInput v-model="form.observaciones" :label="origenTipo === 'orden' ? 'Observaciones' : 'Descripcion'" :placeholder="origenTipo === 'categoria' ? 'Ej. Venta de pila para iPhone 11' : ''" textarea :required="origenTipo === 'categoria'" />
@@ -212,8 +213,13 @@ const selectedYear = ref(now.getFullYear())
 const selectedMonth = ref(now.getMonth() + 1)
 const selectedDay = ref(now.getDate())
 
+function localNow() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 const filters = reactive({ search: '', origen: '' })
-const form = reactive({ orden_id: '', categoria: 'venta', valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '', producto_id: '', cantidad: 1 })
+const form = reactive({ orden_id: '', categoria: 'venta', valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '', producto_id: '', cantidad: 1, fecha: localNow() })
 
 const availableYears = computed(() => {
   const years = new Set([now.getFullYear()])
@@ -392,7 +398,7 @@ const origenBars = computed(() => {
 function resetForm() {
   const defaultCat = categoriasIngreso.value.length ? categoriasIngreso.value[0].value : 'venta'
   vincularInventario.value = false
-  Object.assign(form, { orden_id: '', categoria: defaultCat, valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '', producto_id: '', cantidad: 1 })
+  Object.assign(form, { orden_id: '', categoria: defaultCat, valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '', producto_id: '', cantidad: 1, fecha: localNow() })
 }
 
 function openCreate() {
@@ -428,6 +434,7 @@ async function loadData() {
 
 async function saveIngreso() {
   saving.value = true
+  const fechaISO = form.fecha ? new Date(form.fecha).toISOString() : null
 
   try {
     if (origenTipo.value === 'orden') {
@@ -437,6 +444,7 @@ async function saveIngreso() {
         metodo_pago: form.metodo_pago,
         referencia_pago: form.referencia_pago,
         observaciones: form.observaciones,
+        created_at: fechaISO,
       }), 'Pago registrado')
     } else if (vincularInventario.value && form.producto_id) {
       // Venta vinculada con inventario → endpoint atómico (Kardex + caja + stock)
@@ -446,6 +454,7 @@ async function saveIngreso() {
         precio_venta: Number(form.valor || 0) / Number(form.cantidad || 1),
         metodo_pago: form.metodo_pago,
         descripcion: form.observaciones || form.categoria,
+        created_at: fechaISO,
       }), 'Venta registrada — stock, Kardex e ingreso actualizados')
     } else {
       // Ingreso sin inventario (servicio rápido, etc.)
@@ -455,6 +464,7 @@ async function saveIngreso() {
         valor: Number(form.valor || 0),
         metodo_pago: form.metodo_pago,
         descripcion: form.observaciones,
+        created_at: fechaISO,
       }), 'Ingreso registrado')
     }
     modalOpen.value = false

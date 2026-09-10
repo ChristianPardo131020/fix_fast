@@ -21,6 +21,8 @@ class MovimientoCajaBase(BaseModel):
     # falle al listar filas que tengan un valor no nulo.
     usuario_id: Optional[UUID] = None
 
+    created_at: Optional[datetime] = None
+
 class MovimientoCajaCreate(
     MovimientoCajaBase
 ):

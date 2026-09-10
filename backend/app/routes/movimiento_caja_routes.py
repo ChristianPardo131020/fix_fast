@@ -32,9 +32,12 @@ def crear_movimiento(
     movimiento: MovimientoCajaCreate,
     db: Session = Depends(get_db)
 ):
+    datos = movimiento.dict()
+    if datos.get("created_at") is None:
+        datos.pop("created_at", None)
 
     nuevo_movimiento = MovimientoCaja(
-        **movimiento.dict()
+        **datos
     )
 
     db.add(nuevo_movimiento)

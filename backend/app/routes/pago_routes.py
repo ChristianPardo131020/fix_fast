@@ -34,7 +34,10 @@ def crear_pago(
             detail="Orden no encontrada"
         )
 
-    nuevo_pago = Pago(**pago.dict())
+    datos = pago.dict()
+    if datos.get("created_at") is None:
+        datos.pop("created_at", None)
+    nuevo_pago = Pago(**datos)
 
     db.add(nuevo_pago)
 

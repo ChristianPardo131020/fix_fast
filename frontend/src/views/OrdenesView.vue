@@ -130,7 +130,7 @@
     <!-- Registrar pago -->
     <BaseModal v-model="pagoModalOpen" title="Registrar pago" :subtitle="pagoTarget ? `Orden #${pagoTarget.id} · ${clienteNombre(pagoTarget)}` : ''">
       <form class="grid gap-4" @submit.prevent="savePago">
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4 sm:grid-cols-3">
           <BaseInput v-model="pagoForm.valor" label="Valor" type="number" required />
           <BaseInput v-model="pagoForm.metodo_pago" label="Metodo de pago" type="select">
             <option value="Efectivo">Efectivo</option>
@@ -139,6 +139,7 @@
             <option value="Daviplata">Daviplata</option>
             <option value="Tarjeta">Tarjeta</option>
           </BaseInput>
+          <BaseInput v-model="pagoForm.fecha" label="Fecha y hora" type="datetime-local" required />
         </div>
         <BaseInput v-model="pagoForm.referencia_pago" label="Referencia" placeholder="Numero de comprobante o nota" />
         <BaseInput v-model="pagoForm.observaciones" label="Observaciones" textarea />
@@ -173,6 +174,7 @@ import { useFormatters } from '../composables/useFormatters'
 
 const route = useRoute()
 const router = useRouter()
+const { formatCurrency, parseUTC } = useFormatters()
 const { loading, run } = useApiState()
 const initialLoading = ref(true)
 const ordenes = ref([])
@@ -186,8 +188,9 @@ const selectedDay = ref(null)
 const availableYears = computed(() => {
   const years = new Set([now.getFullYear()])
   ordenes.value.forEach(orden => {
-    if (orden.fecha_ingreso) {
-      years.add(new Date(orden.fecha_ingreso).getFullYear())
+    const d = parseUTC(orden.fecha_ingreso)
+    if (d) {
+      years.add(d.getFullYear())
     }
   })
   return [...years].sort((a, b) => b - a)
@@ -255,7 +258,7 @@ const saldoDisplay = computed({
 const pagoModalOpen = ref(false)
 const savingPago = ref(false)
 const pagoTarget = ref(null)
-const pagoForm = reactive({ valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
+const pagoForm = reactive({ valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '', fecha: localNow() })
 
 const filteredOrdenes = computed(() => {
   const term = search.value.toLowerCase().trim()
@@ -271,7 +274,7 @@ const filteredOrdenes = computed(() => {
     )
     const matchesStatus = !statusFilter.value || orden.estado === statusFilter.value
 
-    const fecha = orden.fecha_ingreso ? new Date(orden.fecha_ingreso) : null
+    const fecha = orden.fecha_ingreso ? parseUTC(orden.fecha_ingreso) : null
     if (!fecha) return false
 
     const matchesYear = fecha.getFullYear() === selectedYear.value
@@ -371,7 +374,7 @@ function openEdit(orden) {
 
 function openPago(orden) {
   pagoTarget.value = orden
-  Object.assign(pagoForm, { valor: orden.saldo || 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
+  Object.assign(pagoForm, { valor: orden.saldo || 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '', fecha: localNow() })
   pagoModalOpen.value = true
 }
 
@@ -423,6 +426,7 @@ async function saveOrden() {
           valor: abonoNum,
           metodo_pago: form.abono_metodo_pago || 'Efectivo',
           observaciones: 'Abono inicial al crear la orden',
+          created_at: fechaISO,
         }), 'Abono registrado')
       }
     }
@@ -436,9 +440,15 @@ async function saveOrden() {
 async function savePago() {
   if (!pagoTarget.value) return
   savingPago.value = true
+  const fechaISO = pagoForm.fecha ? new Date(pagoForm.fecha).toISOString() : null
 
   try {
-    await run(() => pagosApi.create({ ...pagoForm, orden_id: pagoTarget.value.id, valor: Number(pagoForm.valor || 0) }), 'Pago registrado')
+    await run(() => pagosApi.create({
+      ...pagoForm,
+      orden_id: pagoTarget.value.id,
+      valor: Number(pagoForm.valor || 0),
+      created_at: fechaISO,
+    }), 'Pago registrado')
     pagoModalOpen.value = false
     await loadData()
   } finally {

@@ -167,7 +167,7 @@
     <!-- Registrar pago -->
     <BaseModal v-model="pagoModalOpen" title="Registrar pago" :subtitle="orden ? `Orden #${orden.id} · ${clienteNombre}` : ''">
       <form class="grid gap-4" @submit.prevent="savePago">
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4 sm:grid-cols-3">
           <BaseInput v-model="pagoForm.valor" label="Valor" type="number" required />
           <BaseInput v-model="pagoForm.metodo_pago" label="Metodo de pago" type="select">
             <option value="Efectivo">Efectivo</option>
@@ -176,6 +176,7 @@
             <option value="Daviplata">Daviplata</option>
             <option value="Tarjeta">Tarjeta</option>
           </BaseInput>
+          <BaseInput v-model="pagoForm.fecha" label="Fecha y hora" type="datetime-local" required />
         </div>
         <BaseInput v-model="pagoForm.referencia_pago" label="Referencia" placeholder="Numero de comprobante o nota" />
         <BaseInput v-model="pagoForm.observaciones" label="Observaciones" textarea />
@@ -258,7 +259,7 @@ const editForm = reactive({ cliente_id: '', numero_orden: '', equipo: '', marca:
 
 const pagoModalOpen = ref(false)
 const savingPago = ref(false)
-const pagoForm = reactive({ valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
+const pagoForm = reactive({ valor: 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '', fecha: '' })
 
 // --- Repuestos ---
 const repuestosUsados = ref([])
@@ -477,14 +478,20 @@ async function saveEdit() {
 }
 
 function openPago() {
-  Object.assign(pagoForm, { valor: orden.value.saldo || 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '' })
+  Object.assign(pagoForm, { valor: orden.value.saldo || 0, metodo_pago: 'Efectivo', referencia_pago: '', observaciones: '', fecha: localNow() })
   pagoModalOpen.value = true
 }
 
 async function savePago() {
   savingPago.value = true
+  const fechaISO = pagoForm.fecha ? new Date(pagoForm.fecha).toISOString() : null
   try {
-    await run(() => pagosApi.create({ ...pagoForm, orden_id: orden.value.id, valor: Number(pagoForm.valor || 0) }), 'Pago registrado')
+    await run(() => pagosApi.create({
+      ...pagoForm,
+      orden_id: orden.value.id,
+      valor: Number(pagoForm.valor || 0),
+      created_at: fechaISO,
+    }), 'Pago registrado')
     pagoModalOpen.value = false
     await Promise.all([loadOrden(), loadPagos()])
   } finally {

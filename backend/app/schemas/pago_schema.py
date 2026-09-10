@@ -14,6 +14,8 @@ class PagoBase(BaseModel):
 
     observaciones: Optional[str] = None
 
+    created_at: Optional[datetime] = None
+
 class PagoCreate(PagoBase):
     pass
 
