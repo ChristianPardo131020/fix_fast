@@ -22,6 +22,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.estados import ESTADOS, resolve_estado_key
+from app.models.cliente import Cliente
 from app.models.historial_estado import HistorialEstado
 from app.models.movimiento_caja import MovimientoCaja
 from app.models.orden import Orden
@@ -509,12 +510,14 @@ def _performance(db: Session, periodo: Periodo) -> dict:
     }
 
 
-def _alerts(db: Session, periodo: Periodo) -> list[dict]:
-    alertas: list[dict] = []
-    ahora = datetime.utcnow()
-
-    # 1) Equipos sin movimiento: abiertos, sin cambio de estado (ni
-    # ingreso) en mas de DIAS_SIN_MOVIMIENTO dias.
+def _ordenes_sin_movimiento(db: Session, ahora: datetime) -> dict[int, datetime]:
+    """
+    Ordenes abiertas (ni entregadas ni canceladas) cuyo ultimo cambio de
+    estado — o su ingreso, si nunca cambiaron — es anterior a
+    DIAS_SIN_MOVIMIENTO dias. Devuelve {orden_id: fecha_ultimo_movimiento}.
+    Lo usan tanto la alerta (solo el conteo) como el detalle del popup,
+    para que ambos cuenten exactamente lo mismo.
+    """
     abiertas = db.query(Orden.id, Orden.fecha_ingreso).filter(
         ~Orden.estado.ilike("%entreg%"), ~Orden.estado.ilike("%cancel%")
     ).all()
@@ -531,10 +534,30 @@ def _alerts(db: Session, periodo: Periodo) -> list[dict]:
         ultimos_cambios = dict(filas)
 
     limite_sin_movimiento = ahora - timedelta(days=DIAS_SIN_MOVIMIENTO)
-    sin_movimiento = [
-        orden_id for orden_id, fecha_ingreso in abiertas
-        if (ultimos_cambios.get(orden_id) or fecha_ingreso) < limite_sin_movimiento
-    ]
+    resultado: dict[int, datetime] = {}
+    for orden_id, fecha_ingreso in abiertas:
+        ultimo = ultimos_cambios.get(orden_id) or fecha_ingreso
+        if ultimo and ultimo < limite_sin_movimiento:
+            resultado[orden_id] = ultimo
+    return resultado
+
+
+def _filtro_cartera_vencida(ahora: datetime) -> tuple:
+    """Condiciones SQL de "cartera vencida" (compartidas por alerta y detalle)."""
+    limite_cartera = ahora - timedelta(days=DIAS_CARTERA_VENCIDA)
+    return (
+        Orden.saldo > 0,
+        (Orden.estado.ilike("%entreg%")) | (Orden.fecha_ingreso < limite_cartera),
+    )
+
+
+def _alerts(db: Session, periodo: Periodo) -> list[dict]:
+    alertas: list[dict] = []
+    ahora = datetime.utcnow()
+
+    # 1) Equipos sin movimiento: abiertos, sin cambio de estado (ni
+    # ingreso) en mas de DIAS_SIN_MOVIMIENTO dias.
+    sin_movimiento = _ordenes_sin_movimiento(db, ahora)
     if sin_movimiento:
         alertas.append({
             "tipo": "sin_movimiento",
@@ -580,10 +603,8 @@ def _alerts(db: Session, periodo: Periodo) -> list[dict]:
 
     # 4) Cartera vencida: saldo pendiente en ordenes ya entregadas, o
     # ordenes viejas (> DIAS_CARTERA_VENCIDA) que siguen con saldo.
-    limite_cartera = ahora - timedelta(days=DIAS_CARTERA_VENCIDA)
     vencidas = db.query(func.count(Orden.id), func.coalesce(func.sum(Orden.saldo), 0)).filter(
-        Orden.saldo > 0,
-        (Orden.estado.ilike("%entreg%")) | (Orden.fecha_ingreso < limite_cartera),
+        *_filtro_cartera_vencida(ahora)
     ).first()
     cantidad_vencidas, monto_vencido = vencidas
     if cantidad_vencidas:
@@ -610,6 +631,70 @@ def _alerts(db: Session, periodo: Periodo) -> list[dict]:
         })
 
     return alertas
+
+
+# --------------------------------------------------------------------------
+# Detalle de alertas (popup del dashboard)
+# --------------------------------------------------------------------------
+
+ALERTAS_CON_DETALLE = ("sin_movimiento", "cartera_vencida")
+
+
+def detalle_alerta(db: Session, tipo: str) -> list[dict]:
+    """
+    Lista de ordenes detras de una alerta, para el popup del dashboard.
+    Usa exactamente los mismos filtros que _alerts, asi el numero del
+    popup siempre coincide con el de la tarjeta.
+    """
+    ahora = datetime.utcnow()
+
+    if tipo == "sin_movimiento":
+        ultimos = _ordenes_sin_movimiento(db, ahora)
+        if not ultimos:
+            return []
+        filas = (
+            db.query(Orden, Cliente)
+            .outerjoin(Cliente, Cliente.id == Orden.cliente_id)
+            .filter(Orden.id.in_(list(ultimos.keys())))
+            .all()
+        )
+    elif tipo == "cartera_vencida":
+        filas = (
+            db.query(Orden, Cliente)
+            .outerjoin(Cliente, Cliente.id == Orden.cliente_id)
+            .filter(*_filtro_cartera_vencida(ahora))
+            .all()
+        )
+        ultimos = {}
+    else:
+        return []
+
+    items = []
+    for orden, cliente in filas:
+        referencia = ultimos.get(orden.id) or orden.fecha_ingreso
+        items.append({
+            "id": orden.id,
+            "numero_orden": orden.numero_orden,
+            "cliente_id": orden.cliente_id,
+            "cliente_nombre": cliente.nombre if cliente else None,
+            "cliente_telefono": cliente.telefono if cliente else None,
+            "equipo": orden.equipo,
+            "marca": orden.marca,
+            "modelo": orden.modelo,
+            "estado": orden.estado,
+            "fecha_ingreso": orden.fecha_ingreso,
+            "ultimo_movimiento": ultimos.get(orden.id),
+            "dias": (ahora - referencia).days if referencia else None,
+            "valor": _money(orden.valor),
+            "saldo": _money(orden.saldo),
+        })
+
+    # Lo mas urgente primero: mas dias quieto, o mas plata pendiente.
+    if tipo == "sin_movimiento":
+        items.sort(key=lambda i: i["dias"] or 0, reverse=True)
+    else:
+        items.sort(key=lambda i: i["saldo"], reverse=True)
+    return items
 
 
 # --------------------------------------------------------------------------

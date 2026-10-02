@@ -5,6 +5,8 @@ export const dashboardApi = {
   // backend/app/routes/dashboard_routes.py. Todo lo que pinta el
   // dashboard viene ya calculado en esta unica llamada.
   get: (params) => http.get('/dashboard/', { params }),
+  // Ordenes detras de una alerta (popup). tipo: sin_movimiento | cartera_vencida
+  alertaDetalle: (tipo) => http.get(`/dashboard/alertas/${tipo}`),
 }
 
 // Las rutas de detalle (/{id}) del backend NO llevan barra final -- solo

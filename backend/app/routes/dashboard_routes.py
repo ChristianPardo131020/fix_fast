@@ -1,12 +1,12 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas.dashboard_schema import DashboardResponse
-from app.services.dashboard_service import build_dashboard
+from app.schemas.dashboard_schema import AlertaDetalleItem, DashboardResponse
+from app.services.dashboard_service import ALERTAS_CON_DETALLE, build_dashboard, detalle_alerta
 from app.auth.dependencies import get_current_user
 
 router = APIRouter(
@@ -35,3 +35,15 @@ def obtener_dashboard(
     pinta esta respuesta.
     """
     return build_dashboard(db, year=year, month=month, day=day, chart_granularity=chart_granularity)
+
+
+@router.get("/alertas/{tipo}", response_model=list[AlertaDetalleItem])
+def obtener_detalle_alerta(tipo: str, db: Session = Depends(get_db)):
+    """
+    Ordenes detras de una alerta del dashboard (popup al hacer click).
+    Solo "sin_movimiento" y "cartera_vencida" tienen detalle. Son alertas
+    en vivo, no dependen del periodo elegido.
+    """
+    if tipo not in ALERTAS_CON_DETALLE:
+        raise HTTPException(status_code=404, detail="Esta alerta no tiene detalle")
+    return detalle_alerta(db, tipo)

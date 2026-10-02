@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Literal, Optional
 
@@ -88,6 +89,24 @@ class Alerta(BaseModel):
     mensaje: str
     cantidad: int
     monto: Optional[Decimal] = None
+
+
+class AlertaDetalleItem(BaseModel):
+    """Una orden dentro del popup de detalle de una alerta del dashboard."""
+    id: int
+    numero_orden: Optional[str] = None
+    cliente_id: Optional[int] = None
+    cliente_nombre: Optional[str] = None
+    cliente_telefono: Optional[str] = None
+    equipo: Optional[str] = None
+    marca: Optional[str] = None
+    modelo: Optional[str] = None
+    estado: Optional[str] = None
+    fecha_ingreso: Optional[datetime] = None
+    ultimo_movimiento: Optional[datetime] = None
+    dias: Optional[int] = None
+    valor: Decimal
+    saldo: Decimal
 
 
 class PerformanceResponse(BaseModel):
