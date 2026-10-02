@@ -18,6 +18,16 @@ if not DATABASE_URL:
         "backend/.env y completá la connection string de Supabase."
     )
 
+# El driver instalado es psycopg2 (requirements.txt). Desde SQLAlchemy 2.1
+# un "postgresql://" sin driver explicito usa psycopg 3 por defecto, y lo
+# mismo pasa con "postgresql+psycopg://" — en ambos casos intenta importar
+# un modulo que no esta instalado y el backend no arranca
+# (ModuleNotFoundError: psycopg). Se fuerza psycopg2 aca.
+for _prefijo in ("postgresql+psycopg://", "postgresql://", "postgres://"):
+    if DATABASE_URL.startswith(_prefijo):
+        DATABASE_URL = "postgresql+psycopg2://" + DATABASE_URL[len(_prefijo):]
+        break
+
 # engine conexión
 # pool_pre_ping evita usar conexiones que Supabase ya cerró del lado del
 # servidor; pool_recycle recicla conexiones viejas antes de que el pooler
