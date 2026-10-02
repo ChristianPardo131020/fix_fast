@@ -1,7 +1,11 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-psycopg2-binary
-python-dotenv
-python-jose[cryptography]
-pydantic
+# Versiones fijadas: sin esto, cada build de Docker instala lo ultimo y un
+# cambio de version (ej. SQLAlchemy 2.1 pasando a psycopg 3 por defecto)
+# rompe el despliegue sin tocar el codigo. Actualizar a proposito.
+fastapi==0.142.2
+starlette==1.7.0
+uvicorn[standard]==0.54.0
+sqlalchemy==2.1.3
+psycopg2-binary==2.9.13
+python-dotenv==1.2.4
+python-jose[cryptography]==3.5.0
+pydantic==2.13.5
